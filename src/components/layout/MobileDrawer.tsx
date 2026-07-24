@@ -1,20 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useTheme } from '@/components/ThemeProvider'
+import { usePathname } from 'next/navigation'
 
 interface MobileDrawerProps {
   isOpen: boolean
   onClose: () => void
-  menus: { label: string; icon: string; href: string; active?: boolean }[]
-  onNavigate: (href: string) => void
+  user: { id: number; username: string; role: string; fullName: string }
   onLogout: () => void
 }
 
-export default function MobileDrawer({ isOpen, onClose, menus, onNavigate, onLogout }: MobileDrawerProps) {
-  const { theme, toggle } = useTheme()
+const menus = [
+  { label: 'Dashboard', icon: '📊', href: '/' },
+  { label: 'Gaji', icon: '💰', href: '/gaji' },
+  { label: 'Pengeluaran', icon: '📤', href: '/pengeluaran' },
+  { label: 'Panen', icon: '🍓', href: '/pendapatan' },
+  { label: 'Revisi', icon: '📝', href: '/revisi' },
+  { label: 'Pengaturan', icon: '⚙️', href: '/pengaturan' },
+]
 
-  // Prevent body scroll when drawer is open
+export default function MobileDrawer({ isOpen, onClose, user, onLogout }: MobileDrawerProps) {
+  const { theme, toggle } = useTheme()
+  const pathname = usePathname()
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -25,6 +34,10 @@ export default function MobileDrawer({ isOpen, onClose, menus, onNavigate, onLog
   }, [isOpen])
 
   if (!isOpen) return null
+
+  const handleNavigate = (href: string) => {
+    window.location.href = href
+  }
 
   return (
     <>
@@ -78,14 +91,27 @@ export default function MobileDrawer({ isOpen, onClose, menus, onNavigate, onLog
           </button>
         </div>
 
+        {/* User Info */}
+        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center text-sm font-bold text-[var(--color-primary)]">
+              {user.fullName.charAt(0)}
+            </div>
+            <div>
+              <p className="text-sm font-medium">{user.fullName}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{user.role}</p>
+            </div>
+          </div>
+        </div>
+
         {/* Menu Items */}
         <nav className="flex-1 overflow-y-auto py-2 px-3">
           {menus.map((menu, i) => (
             <button
               key={i}
-              onClick={() => { onNavigate(menu.href); onClose(); }}
+              onClick={() => { handleNavigate(menu.href); onClose(); }}
               className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
-                menu.active
+                pathname === menu.href || (menu.href !== '/' && pathname.startsWith(menu.href))
                   ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium'
                   : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-light)]'
               }`}

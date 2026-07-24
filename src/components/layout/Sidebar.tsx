@@ -1,14 +1,29 @@
 'use client'
 
 import { useTheme } from '@/components/ThemeProvider'
+import { usePathname } from 'next/navigation'
 
 interface SidebarProps {
-  menus: { label: string; icon: string; href: string; active?: boolean }[]
-  onNavigate: (href: string) => void
+  user: { id: number; username: string; role: string; fullName: string }
+  onLogout: () => void
 }
 
-export default function Sidebar({ menus, onNavigate }: SidebarProps) {
+const menus = [
+  { label: 'Dashboard', icon: '📊', href: '/' },
+  { label: 'Gaji', icon: '💰', href: '/gaji' },
+  { label: 'Pengeluaran', icon: '📤', href: '/pengeluaran' },
+  { label: 'Panen', icon: '🍓', href: '/pendapatan' },
+  { label: 'Revisi', icon: '📝', href: '/revisi' },
+  { label: 'Pengaturan', icon: '⚙️', href: '/pengaturan' },
+]
+
+export default function Sidebar({ user, onLogout }: SidebarProps) {
   const { theme, toggle } = useTheme()
+  const pathname = usePathname()
+
+  const handleNavigate = (href: string) => {
+    window.location.href = href
+  }
 
   return (
     <aside className="hidden lg:flex flex-col w-60 bg-[var(--color-surface)] border-r border-[var(--color-border)] min-h-screen sticky top-0">
@@ -28,9 +43,9 @@ export default function Sidebar({ menus, onNavigate }: SidebarProps) {
         {menus.map((menu, i) => (
           <button
             key={i}
-            onClick={() => onNavigate(menu.href)}
+            onClick={() => handleNavigate(menu.href)}
             className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
-              menu.active
+              pathname === menu.href || (menu.href !== '/' && pathname.startsWith(menu.href))
                 ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium'
                 : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-light)]'
             }`}
@@ -41,8 +56,8 @@ export default function Sidebar({ menus, onNavigate }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Theme Toggle at bottom */}
-      <div className="p-3 border-t border-[var(--color-border)]">
+      {/* User + Theme */}
+      <div className="p-3 border-t border-[var(--color-border)] space-y-1">
         <button
           onClick={toggle}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-light)] transition-colors"
@@ -57,6 +72,15 @@ export default function Sidebar({ menus, onNavigate }: SidebarProps) {
             </svg>
           )}
           <span>{theme === 'dark' ? 'Mode Terang ☀️' : 'Mode Gelap 🌙'}</span>
+        </button>
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-[var(--color-accent)] hover:bg-[var(--color-surface-light)] transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Logout</span>
         </button>
       </div>
     </aside>
