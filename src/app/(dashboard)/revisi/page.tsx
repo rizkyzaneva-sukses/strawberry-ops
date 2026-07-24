@@ -352,11 +352,23 @@ export default function RevisiPage() {
             )}
           </div>
 
-          {/* Image Paste Area */}
+          {/* Image Upload Area */}
           <FormField label="Lampiran Gambar">
             <div
               ref={pasteAreaRef}
               onPaste={handlePaste}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-[var(--color-primary)]', 'bg-[var(--color-primary)]/5') }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove('border-[var(--color-primary)]', 'bg-[var(--color-primary)]/5') }}
+              onDrop={(e) => {
+                e.preventDefault()
+                e.currentTarget.classList.remove('border-[var(--color-primary)]', 'bg-[var(--color-primary)]/5')
+                const files = e.dataTransfer.files
+                if (files.length > 0) {
+                  Array.from(files).forEach(file => {
+                    if (file.type.startsWith('image/')) uploadImage(file).then(path => { if (path) setFormImages(prev => [...prev, path]) })
+                  })
+                }
+              }}
               className="border-2 border-dashed border-[var(--color-border)] rounded-lg p-4 text-center cursor-text hover:border-[var(--color-primary)] transition-colors min-h-[100px]"
               tabIndex={0}
             >
@@ -366,12 +378,50 @@ export default function RevisiPage() {
                   <span className="text-sm text-[var(--color-text-muted)]">Mengupload...</span>
                 </div>
               ) : (
-                <div>
+                <div className="space-y-3">
                   <p className="text-sm text-[var(--color-text-muted)]">
-                    <span className="font-medium text-[var(--color-primary)]">Ctrl+V</span> untuk paste gambar dari clipboard
+                    <span className="font-medium text-[var(--color-primary)]">Ctrl+V</span> paste, seret gambar, atau
                   </p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Atau klik di sini lalu paste
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                    <label className="btn btn-primary text-sm cursor-pointer">
+                      📁 Pilih dari Galeri
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = e.target.files
+                          if (files) {
+                            Array.from(files).forEach(file => {
+                              uploadImage(file).then(path => { if (path) setFormImages(prev => [...prev, path]) })
+                            })
+                          }
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                    <label className="btn btn-secondary text-sm cursor-pointer">
+                      📷 Ambil Foto
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = e.target.files
+                          if (files) {
+                            Array.from(files).forEach(file => {
+                              uploadImage(file).then(path => { if (path) setFormImages(prev => [...prev, path]) })
+                            })
+                          }
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    JPG, PNG, maks 5MB per file
                   </p>
                 </div>
               )}

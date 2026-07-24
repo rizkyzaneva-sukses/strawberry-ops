@@ -5,23 +5,31 @@ import { useState } from 'react'
 interface HeaderProps {
   user: { fullName: string; role: string }
   onLogout: () => void
+  onMenuToggle?: () => void
 }
 
-export default function Header({ user, onLogout }: HeaderProps) {
+export default function Header({ user, onLogout, onMenuToggle }: HeaderProps) {
   const [showMenu, setShowMenu] = useState(false)
 
   return (
     <header className="sticky top-0 z-40 bg-[var(--color-surface)]/80 backdrop-blur-sm border-b border-[var(--color-border)]">
       <div className="flex items-center justify-between h-14 px-4 lg:px-6">
-        {/* Mobile Logo */}
         <div className="flex items-center gap-2 lg:hidden">
+          <button
+            onClick={onMenuToggle}
+            className="p-1.5 rounded-lg hover:bg-[var(--color-surface-light)] transition-colors"
+            aria-label="Menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <span className="text-xl">🍓</span>
           <h1 className="font-bold text-sm">StrawberryOps</h1>
         </div>
 
         <div className="hidden lg:block" />
 
-        {/* User Menu */}
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}

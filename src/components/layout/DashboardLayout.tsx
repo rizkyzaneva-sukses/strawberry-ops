@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import Header from './Header'
+import MobileDrawer from './MobileDrawer'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -12,6 +14,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const router = useRouter()
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -24,13 +27,19 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       <Sidebar user={user} onLogout={handleLogout} />
 
       <div className="lg:pl-64">
-        <Header user={user} onLogout={handleLogout} />
+        <Header user={user} onLogout={handleLogout} onMenuToggle={() => setDrawerOpen(true)} />
         <main className="p-4 lg:p-6 pb-20 lg:pb-6">
           {children}
         </main>
       </div>
 
       <BottomNav />
+      <MobileDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        user={user}
+        onLogout={handleLogout}
+      />
     </div>
   )
 }
