@@ -1,11 +1,23 @@
 @import "tailwindcss";
 
+/* ===== LIGHT MODE (default) ===== */
 :root {
   --color-primary: #16A34A;
   --color-primary-light: #22C55E;
-  --color-secondary: #0F172A;
   --color-accent: #EF4444;
   --color-success: #22C55E;
+
+  --color-secondary: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-light: #F1F5F9;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-border: #E2E8F0;
+}
+
+/* ===== DARK MODE ===== */
+.dark {
+  --color-secondary: #0F172A;
   --color-surface: #1E293B;
   --color-surface-light: #334155;
   --color-text: #F8FAFC;
@@ -160,7 +172,7 @@ td {
 }
 
 tr:hover td {
-  background-color: rgba(30, 41, 59, 0.5);
+  background-color: var(--color-surface-light);
 }
 
 /* Card */
@@ -183,20 +195,40 @@ tr:hover td {
 
 .badge-success {
   background-color: rgba(34, 197, 94, 0.15);
+  color: #16A34A;
+}
+
+.dark .badge-success {
+  background-color: rgba(34, 197, 94, 0.15);
   color: #22C55E;
 }
 
 .badge-warning {
+  background-color: rgba(234, 179, 8, 0.15);
+  color: #CA8A04;
+}
+
+.dark .badge-warning {
   background-color: rgba(234, 179, 8, 0.15);
   color: #EAB308;
 }
 
 .badge-danger {
   background-color: rgba(239, 68, 68, 0.15);
+  color: #DC2626;
+}
+
+.dark .badge-danger {
+  background-color: rgba(239, 68, 68, 0.15);
   color: #EF4444;
 }
 
 .badge-info {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #2563EB;
+}
+
+.dark .badge-info {
   background-color: rgba(59, 130, 246, 0.15);
   color: #3B82F6;
 }
