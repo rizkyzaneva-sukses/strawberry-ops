@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  phone        String?
+  role         String   // OWNER, MANAGER, STAFF
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  payrollRecords  PayrollRecord[]
+  expenses        Expense[]
+  harvestRevenue  HarvestRevenue[]
+  commodityPrice  CommodityPrice[]
+  passwordResets  PasswordReset[]
+  auditLogs      AuditLog[]
+  revisions      Revision[]
+
+  @@map("users")
+}
+
+model Employee {
+  id          Int       @id @default(autoincrement())
+  fullName    String    @map("full_name")
+  phone       String?
+  address     String?
+  wageType    String    @map("wage_type") // HARIAN, PER_JAM, BORONGAN
+  wageRate    Int       @map("wage_rate") // in IDR
+  minHours    Float?    @map("min_hours")
+  startDate   DateTime  @map("start_date")
+  status      String    @default("ACTIVE") // ACTIVE, INACTIVE
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  payrollRecords PayrollRecord[]
+
+  @@map("employees")
+}
+
+model PayrollRecord {
+  id             Int       @id @default(autoincrement())
+  employeeId     Int       @map("employee_id")
+  workDate       DateTime  @map("work_date")
+  workArea       String?   @map("work_area")
+  clockIn        String?   @map("clock_in")
+  clockOut       String?   @map("clock_out")
+  durationHours  Float?    @map("duration_hours")
+  wageAmount     Int       @map("wage_amount") // in IDR
+  inputBy        Int       @map("input_by")
+  notes          String?
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  user     User     @relation(fields: [inputBy], references: [id])
+
+  @@map("payroll_records")
+}
+
+model ExpenseCategory {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  code String @unique
+
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+model BankAccount {
+  id            Int      @id @default(autoincrement())
+  accountName   String   @map("account_name")
+  bankName      String   @map("bank_name")
+  accountNumber String   @map("account_number")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  expenses Expense[]
+
+  @@map("bank_accounts")
+}
+
+model Expense {
+  id               Int       @id @default(autoincrement())
+  transactionDate  DateTime  @map("transaction_date")
+  categoryId       Int       @map("category_id")
+  description      String?
+  amount           Int       // in IDR
+  sourceAccountId  Int?      @map("source_account_id")
+  recipientAccount String?   @map("recipient_account")
+  transferProofPath String?  @map("transfer_proof_path")
+  receiptProofPath  String?  @map("receipt_proof_path")
+  inputBy          Int       @map("input_by")
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id])
+  sourceAccount BankAccount?    @relation(fields: [sourceAccountId], references: [id])
+  user          User            @relation(fields: [inputBy], references: [id])
+
+  @@map("expenses")
+}
+
+model HarvestRevenue {
+  id               Int       @id @default(autoincrement())
+  harvestDate      DateTime  @map("harvest_date")
+  workArea         String?   @map("work_area")
+  normalPricePerKg Int       @map("normal_price_per_kg")
+  bsPricePerKg     Int       @map("bs_price_per_kg")
+  totalHarvestKg   Float     @map("total_harvest_kg")
+  bsKg             Float     @map("bs_kg")
+  normalKg         Float     @map("normal_kg")
+  normalRevenue    Int       @map("normal_revenue")
+  bsRevenue        Int       @map("bs_revenue")
+  totalRevenue     Int       @map("total_revenue")
+  bsPercentage     Float     @map("bs_percentage")
+  inputBy          Int       @map("input_by")
+  notes            String?
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [inputBy], references: [id])
+
+  @@map("harvest_revenues")
+}
+
+model CommodityPrice {
+  id             Int      @id @default(autoincrement())
+  effectiveDate  DateTime @map("effective_date")
+  normalPricePerKg Int    @map("normal_price_per_kg")
+  bsPricePerKg     Int    @map("bs_price_per_kg")
+  updatedBy      Int      @map("updated_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [updatedBy], references: [id])
+
+  @@map("commodity_prices")
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  code      String
+  phone     String
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("password_resets")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  action    String
+  entity    String
+  entityId  Int      @map("entity_id")
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Revision {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  images      String?  @default("[]")  // JSON array of image paths
+  priority    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, DONE
+  createdBy   Int      @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@map("revisions")
+}
