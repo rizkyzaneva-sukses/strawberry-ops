@@ -14,6 +14,10 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  // Nilai awal harus sama dengan render server ('dark') supaya tidak
+  // ada hydration mismatch. Kelas <html> sendiri sudah benar sejak
+  // awal berkat inline script di layout.tsx — ini cuma menyusulkan
+  // state React (ikon/teks toggle) begitu mount.
   const [theme, setTheme] = useState<Theme>('dark')
   const [mounted, setMounted] = useState(false)
 

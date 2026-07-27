@@ -202,7 +202,7 @@ export default function RevisiPage() {
         </div>
         <div className="card text-center cursor-pointer hover:border-[var(--color-primary)] transition-colors" onClick={() => setFilterStatus(filterStatus === 'IN_PROGRESS' ? '' : 'IN_PROGRESS')}>
           <p className="text-xs text-[var(--color-text-muted)]">Dikerjakan</p>
-          <p className="text-2xl font-bold text-blue-400">{stats.inProgress}</p>
+          <p className="text-2xl font-bold text-[var(--color-info)]">{stats.inProgress}</p>
         </div>
         <div className="card text-center cursor-pointer hover:border-[var(--color-primary)] transition-colors" onClick={() => setFilterStatus(filterStatus === 'DONE' ? '' : 'DONE')}>
           <p className="text-xs text-[var(--color-text-muted)]">Selesai</p>
@@ -240,16 +240,16 @@ export default function RevisiPage() {
                     onClick={() => handleQuickToggle(revision)}
                     className="mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0"
                     style={{
-                      borderColor: revision.status === 'DONE' ? 'var(--color-success)' : revision.status === 'IN_PROGRESS' ? '#3B82F6' : 'var(--color-border)',
+                      borderColor: revision.status === 'DONE' ? 'var(--color-success)' : revision.status === 'IN_PROGRESS' ? 'var(--color-info)' : 'var(--color-border)',
                       backgroundColor: revision.status === 'DONE' ? 'var(--color-success)' : 'transparent',
                     }}
                     title={revision.status === 'DONE' ? 'Klik untuk buka' : revision.status === 'OPEN' ? 'Klik untuk mulai' : 'Klik untuk selesai'}
                   >
                     {revision.status === 'DONE' && (
-                      <span className="text-white text-xs font-bold">✓</span>
+                      <span className="text-[var(--color-on-success)] text-xs font-bold">✓</span>
                     )}
                     {revision.status === 'IN_PROGRESS' && (
-                      <span className="text-blue-400 text-xs">◐</span>
+                      <span className="text-[var(--color-info)] text-xs">◐</span>
                     )}
                   </button>
 
@@ -439,7 +439,7 @@ export default function RevisiPage() {
                     />
                     <button
                       onClick={() => removeImage(i)}
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[var(--color-accent)] text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[var(--color-accent)] text-[var(--color-on-accent)] text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       ✕
                     </button>

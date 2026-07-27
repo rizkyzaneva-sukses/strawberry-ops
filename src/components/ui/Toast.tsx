@@ -34,10 +34,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const typeStyles: Record<ToastType, string> = {
-    success: 'border-[var(--color-success)] bg-[var(--color-success)]/10',
-    error: 'border-[var(--color-accent)] bg-[var(--color-accent)]/10',
-    warning: 'border-yellow-500 bg-yellow-500/10',
-    info: 'border-blue-500 bg-blue-500/10',
+    success: 'border-[var(--color-success)] bg-[color-mix(in_srgb,var(--color-success)_8%,var(--color-surface))] text-[var(--color-text)]',
+    error: 'border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-surface))] text-[var(--color-text)]',
+    warning: 'border-[var(--color-warning)] bg-[color-mix(in_srgb,var(--color-warning)_8%,var(--color-surface))] text-[var(--color-text)]',
+    info: 'border-[var(--color-info)] bg-[color-mix(in_srgb,var(--color-info)_8%,var(--color-surface))] text-[var(--color-text)]',
+  }
+
+  const typeIconColors: Record<ToastType, string> = {
+    success: 'text-[var(--color-success)]',
+    error: 'text-[var(--color-accent)]',
+    warning: 'text-[var(--color-warning)]',
+    info: 'text-[var(--color-info)]',
   }
 
   const typeIcons: Record<ToastType, string> = {
@@ -54,9 +61,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
+            role="alert"
             className={`pointer-events-auto flex items-start gap-3 p-4 rounded-lg border shadow-lg animate-[slideIn_0.2s_ease-out] ${typeStyles[t.type]}`}
           >
-            <span className="text-sm font-bold mt-0.5">{typeIcons[t.type]}</span>
+            <span className={`text-sm font-bold mt-0.5 ${typeIconColors[t.type]}`}>{typeIcons[t.type]}</span>
             <p className="flex-1 text-sm">{t.message}</p>
             <button
               onClick={() => removeToast(t.id)}

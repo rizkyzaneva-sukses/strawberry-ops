@@ -119,7 +119,7 @@ export default function UsersPage() {
       <Modal open={showForm} onClose={() => setShowForm(false)} title={editId ? 'Edit User' : 'Tambah User Baru'}>
         <div className="space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>
+            <div role="alert" className="p-3 rounded-lg bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] text-sm">{error}</div>
           )}
           <FormField label="Nama Lengkap" required>
             <input type="text" value={formFullName} onChange={(e) => setFormFullName(e.target.value)} placeholder="Nama lengkap" />

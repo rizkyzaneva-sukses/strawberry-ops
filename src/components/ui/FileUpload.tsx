@@ -80,7 +80,8 @@ export default function FileUpload({ label, value, onChange, accept = '.jpg,.jpe
             <button
               type="button"
               onClick={() => onChange(null)}
-              className="text-[var(--color-accent)] hover:text-red-400 text-sm"
+              className="text-[var(--color-accent)] hover:opacity-75 text-sm"
+              aria-label="Hapus file"
             >
               ✕
             </button>

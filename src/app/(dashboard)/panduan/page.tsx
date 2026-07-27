@@ -358,7 +358,7 @@ export default function PanduanPage() {
           onClick={() => setTab('panduan')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             tab === 'panduan'
-              ? 'bg-[var(--color-primary)] text-white'
+              ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]'
               : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
           }`}
         >
@@ -368,7 +368,7 @@ export default function PanduanPage() {
           onClick={() => setTab('workflow')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             tab === 'workflow'
-              ? 'bg-[var(--color-primary)] text-white'
+              ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]'
               : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
           }`}
         >
