@@ -26,7 +26,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
   }
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 bg-[var(--color-surface)] border-r border-[var(--color-border)] min-h-screen sticky top-0">
+    <aside className="hidden lg:flex flex-col w-60 bg-[var(--color-surface)] border-r border-[var(--color-border)] h-screen fixed top-0 left-0 z-30">
       {/* Logo */}
       <div className="p-4 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2">
