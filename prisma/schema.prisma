@@ -34,9 +34,8 @@ model Employee {
   fullName    String    @map("full_name")
   phone       String?
   address     String?
-  wageType    String    @map("wage_type") // HARIAN, PER_JAM, BORONGAN
-  wageRate    Int       @map("wage_rate") // in IDR
-  minHours    Float?    @map("min_hours")
+  wageNgabedug Int      @default(0) @map("wage_ngabedug") // IDR per day, shift pagi (7-12)
+  wageNyore    Int      @default(0) @map("wage_nyore") // IDR per day, shift siang (12-15)
   startDate   DateTime  @map("start_date")
   status      String    @default("ACTIVE") // ACTIVE, INACTIVE
   deletedAt   DateTime? @map("deleted_at")
@@ -53,9 +52,9 @@ model PayrollRecord {
   employeeId     Int       @map("employee_id")
   workDate       DateTime  @map("work_date")
   workArea       String?   @map("work_area")
-  clockIn        String?   @map("clock_in")
-  clockOut       String?   @map("clock_out")
-  durationHours  Float?    @map("duration_hours")
+  shiftNgabedug  Boolean   @default(false) @map("shift_ngabedug")
+  shiftNyore     Boolean   @default(false) @map("shift_nyore")
+  lemburHours    Float     @default(0) @map("lembur_hours")
   wageAmount     Int       @map("wage_amount") // in IDR
   inputBy        Int       @map("input_by")
   notes          String?

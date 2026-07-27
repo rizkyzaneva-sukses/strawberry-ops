@@ -13,9 +13,8 @@ interface Employee {
   fullName: string
   phone: string | null
   address: string | null
-  wageType: string
-  wageRate: number
-  minHours: number | null
+  wageNgabedug: number
+  wageNyore: number
   startDate: string
   status: string
 }
@@ -28,7 +27,6 @@ export default function KaryawanPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [filterWageType, setFilterWageType] = useState('')
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
@@ -39,9 +37,8 @@ export default function KaryawanPage() {
   const [formName, setFormName] = useState('')
   const [formPhone, setFormPhone] = useState('')
   const [formAddress, setFormAddress] = useState('')
-  const [formWageType, setFormWageType] = useState('HARIAN')
-  const [formWageRate, setFormWageRate] = useState('')
-  const [formMinHours, setFormMinHours] = useState('')
+  const [formWageNgabedug, setFormWageNgabedug] = useState('')
+  const [formWageNyore, setFormWageNyore] = useState('')
   const [formStartDate, setFormStartDate] = useState('')
   const [formStatus, setFormStatus] = useState('ACTIVE')
 
@@ -50,14 +47,13 @@ export default function KaryawanPage() {
     const params = new URLSearchParams({
       page: String(page), limit: '20', sortBy, sortOrder, search,
       ...(filterStatus && { status: filterStatus }),
-      ...(filterWageType && { wageType: filterWageType }),
     })
     const res = await fetch(`/api/employees?${params}`)
     const data = await res.json()
     setEmployees(data.items || [])
     setTotal(data.total || 0)
     setLoading(false)
-  }, [page, sortBy, sortOrder, search, filterStatus, filterWageType])
+  }, [page, sortBy, sortOrder, search, filterStatus])
 
   useEffect(() => { fetchEmployees() }, [fetchEmployees])
 
@@ -72,9 +68,8 @@ export default function KaryawanPage() {
       setFormName(record.fullName)
       setFormPhone(record.phone || '')
       setFormAddress(record.address || '')
-      setFormWageType(record.wageType)
-      setFormWageRate(String(record.wageRate))
-      setFormMinHours(record.minHours ? String(record.minHours) : '')
+      setFormWageNgabedug(String(record.wageNgabedug))
+      setFormWageNyore(String(record.wageNyore))
       setFormStartDate(record.startDate.split('T')[0])
       setFormStatus(record.status)
     } else {
@@ -82,9 +77,8 @@ export default function KaryawanPage() {
       setFormName('')
       setFormPhone('')
       setFormAddress('')
-      setFormWageType('HARIAN')
-      setFormWageRate('')
-      setFormMinHours('')
+      setFormWageNgabedug('')
+      setFormWageNyore('')
       setFormStartDate(new Date().toISOString().split('T')[0])
       setFormStatus('ACTIVE')
     }
@@ -92,15 +86,14 @@ export default function KaryawanPage() {
   }
 
   async function handleSave() {
-    if (!formName || !formWageType || !formWageRate) return
+    if (!formName) return
     setSaving(true)
     const body = {
       fullName: formName,
       phone: formPhone || null,
       address: formAddress || null,
-      wageType: formWageType,
-      wageRate: formWageRate,
-      minHours: formMinHours || null,
+      wageNgabedug: formWageNgabedug ? parseInt(formWageNgabedug) : 0,
+      wageNyore: formWageNyore ? parseInt(formWageNyore) : 0,
       startDate: formStartDate,
       status: formStatus,
     }
@@ -117,17 +110,11 @@ export default function KaryawanPage() {
     setDeleteId(null); setSaving(false); fetchEmployees()
   }
 
-  function wageTypeLabel(type: string) {
-    const labels: Record<string, string> = { HARIAN: 'Harian', PER_JAM: 'Per Jam', BORONGAN: 'Borongan' }
-    return labels[type] || type
-  }
-
   const columns: Column<Employee>[] = [
     { key: 'fullName', label: 'Nama', sortable: true },
     { key: 'phone', label: 'Telepon', render: (r) => r.phone || '-' },
-    { key: 'wageType', label: 'Tipe Upah', render: (r) => <span className="badge badge-info">{wageTypeLabel(r.wageType)}</span> },
-    { key: 'wageRate', label: 'Tarif Upah', align: 'right', sortable: true, render: (r) => formatIDR(r.wageRate) },
-    { key: 'minHours', label: 'Min Jam', align: 'right', render: (r) => r.minHours ? `${r.minHours} jam` : '-' },
+    { key: 'wageNgabedug', label: 'Upah Ngabedug', align: 'right', sortable: true, render: (r) => formatIDR(r.wageNgabedug) },
+    { key: 'wageNyore', label: 'Upah Nyore', align: 'right', sortable: true, render: (r) => formatIDR(r.wageNyore) },
     { key: 'startDate', label: 'Mulai Kerja', sortable: true, render: (r) => formatDate(r.startDate) },
     { key: 'status', label: 'Status', align: 'center', render: (r) => (
       <span className={`badge ${r.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'}`}>
@@ -153,20 +140,14 @@ export default function KaryawanPage() {
       </div>
 
       <div className="card">
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <input type="text" placeholder="Cari nama..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
           <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}>
             <option value="">Semua Status</option>
             <option value="ACTIVE">Aktif</option>
             <option value="INACTIVE">Nonaktif</option>
           </select>
-          <select value={filterWageType} onChange={(e) => { setFilterWageType(e.target.value); setPage(1) }}>
-            <option value="">Semua Tipe</option>
-            <option value="HARIAN">Harian</option>
-            <option value="PER_JAM">Per Jam</option>
-            <option value="BORONGAN">Borongan</option>
-          </select>
-          <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterWageType(''); setPage(1) }} className="btn btn-secondary">Reset</button>
+          <button onClick={() => { setSearch(''); setFilterStatus(''); setPage(1) }} className="btn btn-secondary">Reset</button>
         </div>
       </div>
 
@@ -185,21 +166,12 @@ export default function KaryawanPage() {
           <FormField label="Alamat">
             <textarea value={formAddress} onChange={(e) => setFormAddress(e.target.value)} rows={2} placeholder="Alamat karyawan" />
           </FormField>
-          <FormField label="Tipe Upah" required>
-            <select value={formWageType} onChange={(e) => setFormWageType(e.target.value)}>
-              <option value="HARIAN">Harian</option>
-              <option value="PER_JAM">Per Jam</option>
-              <option value="BORONGAN">Borongan</option>
-            </select>
+          <FormField label="Upah Ngabedug (Rp/hari)" required>
+            <input type="number" value={formWageNgabedug} onChange={(e) => setFormWageNgabedug(e.target.value)} placeholder="0" min="0" />
           </FormField>
-          <FormField label={`Tarif Upah (Rp)${formWageType === 'HARIAN' ? '/hari' : formWageType === 'PER_JAM' ? '/jam' : '/borongan'}`} required>
-            <input type="number" value={formWageRate} onChange={(e) => setFormWageRate(e.target.value)} placeholder="0" min="0" />
+          <FormField label="Upah Nyore (Rp/hari)" required>
+            <input type="number" value={formWageNyore} onChange={(e) => setFormWageNyore(e.target.value)} placeholder="0" min="0" />
           </FormField>
-          {formWageType === 'PER_JAM' && (
-            <FormField label="Minimum Jam Kerja">
-              <input type="number" value={formMinHours} onChange={(e) => setFormMinHours(e.target.value)} placeholder="0" min="0" step="0.5" />
-            </FormField>
-          )}
           <FormField label="Tanggal Mulai Kerja">
             <input type="date" value={formStartDate} onChange={(e) => setFormStartDate(e.target.value)} />
           </FormField>
@@ -214,7 +186,7 @@ export default function KaryawanPage() {
 
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={() => setShowForm(false)} className="btn btn-secondary">Batal</button>
-            <button onClick={handleSave} disabled={saving || !formName || !formWageRate} className="btn btn-primary">
+            <button onClick={handleSave} disabled={saving || !formName} className="btn btn-primary">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>

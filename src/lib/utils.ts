@@ -45,31 +45,15 @@ export function parseDateOnly(dateStr: string): Date {
   return new Date(y, m - 1, d)
 }
 
-export function calculateDuration(clockIn: string, clockOut: string): number {
-  const [inH, inM] = clockIn.split(':').map(Number)
-  const [outH, outM] = clockOut.split(':').map(Number)
-  const inMinutes = inH * 60 + inM
-  const outMinutes = outH * 60 + outM
-  return Math.max(0, (outMinutes - inMinutes) / 60)
-}
-
 export function calculateWage(
-  wageType: string,
-  wageRate: number,
-  durationHours: number,
-  minHours?: number | null
+  wageNgabedug: number,
+  wageNyore: number,
+  shiftNgabedug: boolean,
+  shiftNyore: boolean,
+  lemburHours: number
 ): number {
-  switch (wageType) {
-    case 'HARIAN':
-      return wageRate
-    case 'PER_JAM':
-      const effectiveHours = minHours ? Math.max(durationHours, minHours) : durationHours
-      return Math.round(wageRate * effectiveHours)
-    case 'BORONGAN':
-      return wageRate
-    default:
-      return 0
-  }
+  const LEMBUR_RATE = 10000 // 10rb per hour
+  return (shiftNgabedug ? wageNgabedug : 0) + (shiftNyore ? wageNyore : 0) + Math.round(lemburHours * LEMBUR_RATE)
 }
 
 export function cn(...classes: (string | undefined | null | false)[]): string {

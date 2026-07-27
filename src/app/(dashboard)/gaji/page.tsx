@@ -8,14 +8,13 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FormField from '@/components/ui/FormField'
 import StatCard from '@/components/ui/StatCard'
 import ExportButton from '@/components/ui/ExportButton'
-import { formatIDR, formatDate, calculateDuration, calculateWage } from '@/lib/utils'
+import { formatIDR, formatDate, calculateWage } from '@/lib/utils'
 
 interface Employee {
   id: number
   fullName: string
-  wageType: string
-  wageRate: number
-  minHours: number | null
+  wageNgabedug: number
+  wageNyore: number
 }
 
 interface PayrollRecord {
@@ -23,9 +22,9 @@ interface PayrollRecord {
   employeeId: number
   workDate: string
   workArea: string | null
-  clockIn: string | null
-  clockOut: string | null
-  durationHours: number | null
+  shiftNgabedug: boolean
+  shiftNyore: boolean
+  lemburHours: number
   wageAmount: number
   notes: string | null
   employee: Employee
@@ -36,7 +35,7 @@ export default function GajiPage() {
   const [records, setRecords] = useState<PayrollRecord[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [total, setTotal] = useState(0)
-  const [totals, setTotals] = useState({ totalWage: 0, totalHours: 0 })
+  const [totals, setTotals] = useState({ totalWage: 0 })
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState('workDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -53,8 +52,9 @@ export default function GajiPage() {
   const [formEmployeeId, setFormEmployeeId] = useState('')
   const [formWorkDate, setFormWorkDate] = useState('')
   const [formWorkArea, setFormWorkArea] = useState('')
-  const [formClockIn, setFormClockIn] = useState('')
-  const [formClockOut, setFormClockOut] = useState('')
+  const [formShiftNgabedug, setFormShiftNgabedug] = useState(false)
+  const [formShiftNyore, setFormShiftNyore] = useState(false)
+  const [formLemburHours, setFormLemburHours] = useState('')
   const [formNotes, setFormNotes] = useState('')
 
   const fetchRecords = useCallback(async () => {
@@ -72,7 +72,7 @@ export default function GajiPage() {
     const data = await res.json()
     setRecords(data.items || [])
     setTotal(data.total || 0)
-    setTotals(data.totals || { totalWage: 0, totalHours: 0 })
+    setTotals(data.totals || { totalWage: 0 })
     setLoading(false)
   }, [page, sortBy, sortOrder, search, startDate, endDate])
 
@@ -100,16 +100,18 @@ export default function GajiPage() {
       setFormEmployeeId(String(record.employeeId))
       setFormWorkDate(record.workDate.split('T')[0])
       setFormWorkArea(record.workArea || '')
-      setFormClockIn(record.clockIn || '')
-      setFormClockOut(record.clockOut || '')
+      setFormShiftNgabedug(record.shiftNgabedug)
+      setFormShiftNyore(record.shiftNyore)
+      setFormLemburHours(record.lemburHours ? String(record.lemburHours) : '')
       setFormNotes(record.notes || '')
     } else {
       setEditId(null)
       setFormEmployeeId('')
       setFormWorkDate(new Date().toISOString().split('T')[0])
       setFormWorkArea('')
-      setFormClockIn('')
-      setFormClockOut('')
+      setFormShiftNgabedug(false)
+      setFormShiftNyore(false)
+      setFormLemburHours('')
       setFormNotes('')
     }
     setShowForm(true)
@@ -123,8 +125,9 @@ export default function GajiPage() {
       employeeId: formEmployeeId,
       workDate: formWorkDate,
       workArea: formWorkArea || null,
-      clockIn: formClockIn || null,
-      clockOut: formClockOut || null,
+      shiftNgabedug: formShiftNgabedug,
+      shiftNyore: formShiftNyore,
+      lemburHours: formLemburHours ? parseFloat(formLemburHours) : 0,
       notes: formNotes || null,
     }
 
@@ -155,18 +158,17 @@ export default function GajiPage() {
 
   // Auto-calculate preview
   const selectedEmployee = employees.find(e => e.id === parseInt(formEmployeeId))
-  const previewDuration = formClockIn && formClockOut ? calculateDuration(formClockIn, formClockOut) : 0
   const previewWage = selectedEmployee
-    ? calculateWage(selectedEmployee.wageType, selectedEmployee.wageRate, previewDuration, selectedEmployee.minHours)
+    ? calculateWage(selectedEmployee.wageNgabedug, selectedEmployee.wageNyore, formShiftNgabedug, formShiftNyore, formLemburHours ? parseFloat(formLemburHours) : 0)
     : 0
 
   const columns: Column<PayrollRecord>[] = [
     { key: 'workDate', label: 'Tanggal', sortable: true, render: (r) => formatDate(r.workDate) },
     { key: 'employee', label: 'Karyawan', render: (r) => r.employee.fullName },
     { key: 'workArea', label: 'Area Kerja', render: (r) => r.workArea || '-' },
-    { key: 'clockIn', label: 'Jam Masuk', render: (r) => r.clockIn || '-' },
-    { key: 'clockOut', label: 'Jam Keluar', render: (r) => r.clockOut || '-' },
-    { key: 'durationHours', label: 'Durasi', align: 'right', render: (r) => r.durationHours ? `${r.durationHours.toFixed(1)} jam` : '-' },
+    { key: 'shiftNgabedug', label: 'Ngabedug', render: (r) => r.shiftNgabedug ? '✅' : '❌' },
+    { key: 'shiftNyore', label: 'Nyore', render: (r) => r.shiftNyore ? '✅' : '❌' },
+    { key: 'lemburHours', label: 'Lembur', align: 'right', render: (r) => r.lemburHours > 0 ? `${r.lemburHours} jam` : '-' },
     { key: 'wageAmount', label: 'Upah', align: 'right', sortable: true, render: (r) => formatIDR(r.wageAmount) },
     {
       key: 'actions',
@@ -198,9 +200,8 @@ export default function GajiPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard label="Total Upah" value={totals.totalWage} icon="💰" />
-        <StatCard label="Total Jam Kerja" value={totals.totalHours} format="number" icon="⏱️" />
         <StatCard label="Jumlah Record" value={total} format="number" icon="📋" />
       </div>
 
@@ -252,7 +253,7 @@ export default function GajiPage() {
               <option value="">Pilih karyawan</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.fullName} ({emp.wageType} - {formatIDR(emp.wageRate)})
+                  {emp.fullName} ({formatIDR(emp.wageNgabedug)} ngabedug / {formatIDR(emp.wageNyore)} nyore)
                 </option>
               ))}
             </select>
@@ -267,21 +268,33 @@ export default function GajiPage() {
           </FormField>
 
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Jam Masuk">
-              <input type="time" value={formClockIn} onChange={(e) => setFormClockIn(e.target.value)} />
+            <FormField label="Shift Ngabedug (7-12)">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formShiftNgabedug} onChange={(e) => setFormShiftNgabedug(e.target.checked)} className="w-4 h-4" />
+                <span className="text-sm">Hadir Pagi</span>
+              </label>
             </FormField>
-            <FormField label="Jam Keluar">
-              <input type="time" value={formClockOut} onChange={(e) => setFormClockOut(e.target.value)} />
+            <FormField label="Shift Nyore (12-15)">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formShiftNyore} onChange={(e) => setFormShiftNyore(e.target.checked)} className="w-4 h-4" />
+                <span className="text-sm">Hadir Siang</span>
+              </label>
             </FormField>
           </div>
+
+          <FormField label="Lembur (jam)">
+            <input type="number" value={formLemburHours} onChange={(e) => setFormLemburHours(e.target.value)} placeholder="0" min="0" step="0.5" />
+          </FormField>
 
           {selectedEmployee && (
             <div className="p-3 rounded-lg bg-[var(--color-secondary)] border border-[var(--color-border)]">
               <p className="text-sm text-[var(--color-text-muted)]">Preview Perhitungan:</p>
               <p className="text-sm mt-1">
-                Tipe: <span className="font-medium">{selectedEmployee.wageType}</span> |
-                Tarif: <span className="font-medium">{formatIDR(selectedEmployee.wageRate)}</span>
-                {previewDuration > 0 && <> | Durasi: <span className="font-medium">{previewDuration.toFixed(1)} jam</span></>}
+                Ngabedug: <span className="font-medium">{formatIDR(selectedEmployee.wageNgabedug)}</span>
+                {formShiftNgabedug && ' ✅'} |
+                Nyore: <span className="font-medium">{formatIDR(selectedEmployee.wageNyore)}</span>
+                {formShiftNyore && ' ✅'}
+                {formLemburHours && parseFloat(formLemburHours) > 0 && <> | Lembur: <span className="font-medium">{formLemburHours} jam × Rp10.000</span></>}
               </p>
               <p className="text-lg font-bold text-[var(--color-primary)] mt-1">
                 Upah: {formatIDR(previewWage)}

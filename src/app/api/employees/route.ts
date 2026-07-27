@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
 
   const { page, limit, search, sortBy, sortOrder } = parseSearchParams(request.url)
   const status = new URL(request.url).searchParams.get('status') || ''
-  const wageType = new URL(request.url).searchParams.get('wageType') || ''
 
   const where: any = { deletedAt: null }
   if (search) {
@@ -20,7 +19,6 @@ export async function GET(request: NextRequest) {
     ]
   }
   if (status) where.status = status
-  if (wageType) where.wageType = wageType
 
   const [items, total] = await Promise.all([
     prisma.employee.findMany({
@@ -45,16 +43,15 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return errorResponse(parsed.error.errors[0].message)
     }
-    const { fullName, phone, address, wageType, wageRate, minHours, startDate } = parsed.data
+    const { fullName, phone, address, wageNgabedug, wageNyore, startDate } = parsed.data
 
     const employee = await prisma.employee.create({
       data: {
         fullName,
         phone: phone || null,
         address: address || null,
-        wageType,
-        wageRate,
-        minHours: minHours || null,
+        wageNgabedug: wageNgabedug ?? 0,
+        wageNyore: wageNyore ?? 0,
         startDate: startDate ? new Date(startDate) : new Date(),
         status: 'ACTIVE',
       },

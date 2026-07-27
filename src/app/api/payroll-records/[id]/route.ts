@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, jsonResponse, errorResponse } from '@/lib/api-utils'
-import { calculateDuration, calculateWage } from '@/lib/utils'
+import { calculateWage } from '@/lib/utils'
 import { logAudit } from '@/lib/audit'
 
 export async function GET(
@@ -34,7 +34,7 @@ export async function PUT(
   const { id } = await params
   try {
     const body = await request.json()
-    const { employeeId, workDate, workArea, clockIn, clockOut, notes } = body
+    const { employeeId, workDate, workArea, shiftNgabedug, shiftNyore, lemburHours, notes } = body
 
     const existing = await prisma.payrollRecord.findFirst({
       where: { id: parseInt(id), deletedAt: null },
@@ -49,18 +49,16 @@ export async function PUT(
       return errorResponse('Karyawan tidak ditemukan')
     }
 
-    const ci = clockIn !== undefined ? clockIn : existing.clockIn
-    const co = clockOut !== undefined ? clockOut : existing.clockOut
-    let durationHours: number | null = existing.durationHours
-    if (ci && co) {
-      durationHours = calculateDuration(ci, co)
-    }
+    const newShiftNgabedug = shiftNgabedug !== undefined ? shiftNgabedug : existing.shiftNgabedug
+    const newShiftNyore = shiftNyore !== undefined ? shiftNyore : existing.shiftNyore
+    const newLemburHours = lemburHours !== undefined ? parseFloat(lemburHours) : existing.lemburHours
 
     const wageAmount = calculateWage(
-      employee.wageType,
-      employee.wageRate,
-      durationHours || 0,
-      employee.minHours
+      employee.wageNgabedug,
+      employee.wageNyore,
+      newShiftNgabedug,
+      newShiftNyore,
+      newLemburHours
     )
 
     const record = await prisma.payrollRecord.update({
@@ -69,9 +67,9 @@ export async function PUT(
         ...(employeeId !== undefined && { employeeId: parseInt(employeeId) }),
         ...(workDate !== undefined && { workDate: new Date(workDate) }),
         ...(workArea !== undefined && { workArea: workArea || null }),
-        ...(clockIn !== undefined && { clockIn: clockIn || null }),
-        ...(clockOut !== undefined && { clockOut: clockOut || null }),
-        durationHours,
+        ...(shiftNgabedug !== undefined && { shiftNgabedug: shiftNgabedug }),
+        ...(shiftNyore !== undefined && { shiftNyore: shiftNyore }),
+        ...(lemburHours !== undefined && { lemburHours: parseFloat(lemburHours) }),
         wageAmount,
         ...(notes !== undefined && { notes: notes || null }),
       },

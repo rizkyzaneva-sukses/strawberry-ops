@@ -34,13 +34,15 @@ async function generatePayrollCSV(startDate: string, endDate: string): Promise<s
     orderBy: { workDate: 'asc' },
   })
 
-  const header = 'Tanggal,Karyawan,Area Kerja,Durasi (jam),Upah (Rp)'
+  const header = 'Tanggal,Karyawan,Area Kerja,Ngabedug,Nyore,Lembur (jam),Upah (Rp)'
   const rows = records.map((r: any) =>
     [
       escapeCSV(formatDateISO(r.workDate)),
       escapeCSV(r.employee.fullName),
       escapeCSV(r.workArea || ''),
-      escapeCSV(r.durationHours ?? ''),
+      escapeCSV(r.shiftNgabedug ? 'Ya' : 'Tidak'),
+      escapeCSV(r.shiftNyore ? 'Ya' : 'Tidak'),
+      escapeCSV(r.lemburHours || 0),
       escapeCSV(r.wageAmount),
     ].join(',')
   )

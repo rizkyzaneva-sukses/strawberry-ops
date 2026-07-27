@@ -2,13 +2,10 @@ import { z } from 'zod'
 
 export const createEmployeeSchema = z.object({
   fullName: z.string().min(1, 'Nama wajib diisi'),
-  wageType: z.enum(['HARIAN', 'PER_JAM', 'BORONGAN'], {
-    errorMap: () => ({ message: 'Tipe upah tidak valid' }),
-  }),
-  wageRate: z.number().positive('Tarif upah harus lebih dari 0'),
+  wageNgabedug: z.number().min(0, 'Upah Ngabedug tidak boleh negatif'),
+  wageNyore: z.number().min(0, 'Upah Nyore tidak boleh negatif'),
   phone: z.string().optional(),
   address: z.string().optional(),
-  minHours: z.number().positive().optional(),
   startDate: z.string().optional(),
 })
 
@@ -35,8 +32,9 @@ export const createPayrollSchema = z.object({
   employeeId: z.number().positive('Karyawan wajib diisi'),
   workDate: z.string().min(1, 'Tanggal kerja wajib diisi'),
   workArea: z.string().optional(),
-  clockIn: z.string().optional(),
-  clockOut: z.string().optional(),
+  shiftNgabedug: z.boolean().optional(),
+  shiftNyore: z.boolean().optional(),
+  lemburHours: z.number().min(0).optional(),
   notes: z.string().optional(),
 })
 

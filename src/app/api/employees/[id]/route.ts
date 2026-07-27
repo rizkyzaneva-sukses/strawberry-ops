@@ -32,7 +32,7 @@ export async function PUT(
   const { id } = await params
   try {
     const body = await request.json()
-    const { fullName, phone, address, wageType, wageRate, minHours, startDate, status } = body
+    const { fullName, phone, address, wageNgabedug, wageNyore, startDate, status } = body
 
     const existing = await prisma.employee.findFirst({
       where: { id: parseInt(id), deletedAt: null },
@@ -47,9 +47,8 @@ export async function PUT(
         ...(fullName !== undefined && { fullName }),
         ...(phone !== undefined && { phone: phone || null }),
         ...(address !== undefined && { address: address || null }),
-        ...(wageType !== undefined && { wageType }),
-        ...(wageRate !== undefined && { wageRate: parseInt(wageRate) }),
-        ...(minHours !== undefined && { minHours: minHours ? parseFloat(minHours) : null }),
+        ...(wageNgabedug !== undefined && { wageNgabedug: parseInt(wageNgabedug) }),
+        ...(wageNyore !== undefined && { wageNyore: parseInt(wageNyore) }),
         ...(startDate !== undefined && { startDate: new Date(startDate) }),
         ...(status !== undefined && { status }),
       },
@@ -57,8 +56,8 @@ export async function PUT(
 
     const changes: string[] = []
     if (fullName !== undefined && fullName !== existing.fullName) changes.push(`fullName: ${existing.fullName} -> ${fullName}`)
-    if (wageType !== undefined && wageType !== existing.wageType) changes.push(`wageType: ${existing.wageType} -> ${wageType}`)
-    if (wageRate !== undefined && parseInt(wageRate) !== existing.wageRate) changes.push(`wageRate: ${existing.wageRate} -> ${wageRate}`)
+    if (wageNgabedug !== undefined && parseInt(wageNgabedug) !== existing.wageNgabedug) changes.push(`wageNgabedug: ${existing.wageNgabedug} -> ${wageNgabedug}`)
+    if (wageNyore !== undefined && parseInt(wageNyore) !== existing.wageNyore) changes.push(`wageNyore: ${existing.wageNyore} -> ${wageNyore}`)
     if (status !== undefined && status !== existing.status) changes.push(`status: ${existing.status} -> ${status}`)
     logAudit(user!.id, 'UPDATE', 'Employee', employee.id, changes.length > 0 ? JSON.stringify(changes) : undefined)
 

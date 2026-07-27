@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, parseSearchParams, jsonResponse, errorResponse } from '@/lib/api-utils'
-import { calculateDuration, calculateWage } from '@/lib/utils'
+import { calculateWage } from '@/lib/utils'
 import { logAudit } from '@/lib/audit'
 import { createPayrollSchema } from '@/lib/validations'
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   // Calculate totals
   const totals = await prisma.payrollRecord.aggregate({
     where,
-    _sum: { wageAmount: true, durationHours: true },
+    _sum: { wageAmount: true },
   })
 
   return jsonResponse({
@@ -50,7 +50,6 @@ export async function GET(request: NextRequest) {
     limit,
     totals: {
       totalWage: totals._sum.wageAmount || 0,
-      totalHours: totals._sum.durationHours || 0,
     },
   })
 }
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return errorResponse(parsed.error.errors[0].message)
     }
-    const { employeeId, workDate, workArea, clockIn, clockOut, notes } = parsed.data
+    const { employeeId, workDate, workArea, shiftNgabedug, shiftNyore, lemburHours, notes } = parsed.data
 
     const employee = await prisma.employee.findFirst({
       where: { id: employeeId, deletedAt: null },
@@ -74,16 +73,12 @@ export async function POST(request: NextRequest) {
       return errorResponse('Karyawan tidak ditemukan')
     }
 
-    let durationHours: number | null = null
-    if (clockIn && clockOut) {
-      durationHours = calculateDuration(clockIn, clockOut)
-    }
-
     const wageAmount = calculateWage(
-      employee.wageType,
-      employee.wageRate,
-      durationHours || 0,
-      employee.minHours
+      employee.wageNgabedug,
+      employee.wageNyore,
+      shiftNgabedug || false,
+      shiftNyore || false,
+      lemburHours || 0
     )
 
     const record = await prisma.payrollRecord.create({
@@ -91,9 +86,9 @@ export async function POST(request: NextRequest) {
         employeeId: employee.id,
         workDate: new Date(workDate),
         workArea: workArea || null,
-        clockIn: clockIn || null,
-        clockOut: clockOut || null,
-        durationHours,
+        shiftNgabedug: shiftNgabedug || false,
+        shiftNyore: shiftNyore || false,
+        lemburHours: lemburHours || 0,
         wageAmount,
         inputBy: user!.id,
         notes: notes || null,
