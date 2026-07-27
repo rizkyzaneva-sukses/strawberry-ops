@@ -56,9 +56,9 @@ async function main() {
 
   // Seed sample employees
   const employees = [
-    { fullName: 'Budi Santoso', phone: '081234567890', address: 'Kota Batu', wageType: 'HARIAN', wageRate: 100000, minHours: null, startDate: new Date('2024-01-15'), status: 'ACTIVE' },
-    { fullName: 'Siti Aminah', phone: '081234567891', address: 'Kota Batu', wageType: 'PER_JAM', wageRate: 15000, minHours: 4, startDate: new Date('2024-02-01'), status: 'ACTIVE' },
-    { fullName: 'Joko Widodo', phone: '081234567892', address: 'Malang', wageType: 'BORONGAN', wageRate: 200000, minHours: null, startDate: new Date('2024-03-01'), status: 'ACTIVE' },
+    { fullName: 'Budi Santoso', phone: '081234567890', address: 'Kota Batu', wageNgabedug: 80000, wageNyore: 60000, startDate: new Date('2024-01-15'), status: 'ACTIVE' },
+    { fullName: 'Siti Aminah', phone: '081234567891', address: 'Kota Batu', wageNgabedug: 75000, wageNyore: 55000, startDate: new Date('2024-02-01'), status: 'ACTIVE' },
+    { fullName: 'Joko Widodo', phone: '081234567892', address: 'Malang', wageNgabedug: 90000, wageNyore: 70000, startDate: new Date('2024-03-01'), status: 'ACTIVE' },
   ]
 
   for (const emp of employees) {
