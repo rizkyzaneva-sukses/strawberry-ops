@@ -34,7 +34,7 @@ export async function PUT(
   try {
     const body = await request.json()
     const {
-      harvestDate, workArea,
+      harvestDate, gardenId, blockId,
       normalPricePerKg, bsPricePerKg,
       totalHarvestKg, bsKg,
       notes,
@@ -52,6 +52,16 @@ export async function PUT(
     const npk = normalPricePerKg !== undefined ? parseInt(normalPricePerKg) : existing.normalPricePerKg
     const bpk = bsPricePerKg !== undefined ? parseInt(bsPricePerKg) : existing.bsPricePerKg
 
+    if (bk > nhk) return errorResponse('Berat BS tidak boleh melebihi total panen')
+
+    const nextGardenId = gardenId !== undefined ? parseInt(gardenId) : existing.gardenId
+    if (blockId) {
+      const block = await prisma.block.findFirst({
+        where: { id: parseInt(blockId), gardenId: nextGardenId },
+      })
+      if (!block) return errorResponse('Blok tidak ada di kebun yang dipilih')
+    }
+
     const normalKg = nhk - bk
     const normalRevenue = Math.round(normalKg * npk)
     const bsRevenue = Math.round(bk * bpk)
@@ -62,7 +72,8 @@ export async function PUT(
       where: { id: parseInt(id) },
       data: {
         ...(harvestDate !== undefined && { harvestDate: new Date(harvestDate) }),
-        ...(workArea !== undefined && { workArea: workArea || null }),
+        ...(gardenId !== undefined && { gardenId: nextGardenId }),
+        ...(blockId !== undefined && { blockId: blockId ? parseInt(blockId) : null }),
         normalPricePerKg: npk,
         bsPricePerKg: bpk,
         totalHarvestKg: nhk,

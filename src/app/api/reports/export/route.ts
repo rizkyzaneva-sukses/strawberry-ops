@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
-import { errorResponse } from '@/lib/api-utils'
+import { errorResponse, requireAuth } from '@/lib/api-utils'
 import { prisma } from '@/lib/prisma'
+import { SHIFT_LABELS, type Shift } from '@/lib/utils'
 
-type ReportType = 'payroll' | 'expenses' | 'harvest'
+type ReportType = 'payroll' | 'expenses' | 'harvest' | 'capital' | 'budget'
 
 function escapeCSV(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return ''
@@ -20,133 +21,229 @@ function formatDateISO(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-async function generatePayrollCSV(startDate: string, endDate: string): Promise<string> {
-  const where: Record<string, unknown> = { deletedAt: null }
-  if (startDate || endDate) {
-    where.workDate = {}
-    if (startDate) (where.workDate as Record<string, Date>).gte = new Date(startDate)
-    if (endDate) (where.workDate as Record<string, Date>).lte = new Date(endDate + 'T23:59:59')
-  }
+function dateWhere(field: string, startDate: string, endDate: string) {
+  if (!startDate && !endDate) return {}
+  const range: Record<string, Date> = {}
+  if (startDate) range.gte = new Date(startDate)
+  if (endDate) range.lte = new Date(`${endDate}T23:59:59`)
+  return { [field]: range }
+}
 
+type Options = { startDate: string; endDate: string; gardenId: number | null }
+
+async function generatePayrollCSV({ startDate, endDate, gardenId }: Options) {
   const records = await prisma.payrollRecord.findMany({
-    where,
-    include: { employee: true },
-    orderBy: { workDate: 'asc' },
+    where: {
+      deletedAt: null,
+      ...dateWhere('workDate', startDate, endDate),
+      ...(gardenId ? { gardenId } : {}),
+    },
+    include: { employee: true, garden: true, block: true, jobType: true },
+    orderBy: [{ workDate: 'asc' }, { employeeId: 'asc' }],
   })
 
-  const header = 'Tanggal,Karyawan,Area Kerja,Ngabedug,Nyore,Lembur (jam),Upah (Rp)'
-  const rows = records.map((r: any) =>
+  const header =
+    'Tanggal,Karyawan,Kebun,Blok,Pekerjaan,Shift,Jam Mulai,Jam Selesai,Lembur (jam),Jumlah Orang,Upah (Rp)'
+  const rows = records.map((record) =>
     [
-      escapeCSV(formatDateISO(r.workDate)),
-      escapeCSV(r.employee.fullName),
-      escapeCSV(r.workArea || ''),
-      escapeCSV(r.shiftNgabedug ? 'Ya' : 'Tidak'),
-      escapeCSV(r.shiftNyore ? 'Ya' : 'Tidak'),
-      escapeCSV(r.lemburHours || 0),
-      escapeCSV(r.wageAmount),
+      escapeCSV(formatDateISO(record.workDate)),
+      escapeCSV(record.employee.fullName),
+      escapeCSV(record.garden.name),
+      escapeCSV(record.block?.name || ''),
+      escapeCSV(record.jobType?.name || ''),
+      escapeCSV(SHIFT_LABELS[record.shift as Shift] || record.shift),
+      escapeCSV(record.startTime || ''),
+      escapeCSV(record.endTime || ''),
+      escapeCSV(record.lemburHours || 0),
+      escapeCSV(record.headcount),
+      escapeCSV(record.wageAmount),
     ].join(',')
   )
 
   return [header, ...rows].join('\n')
 }
 
-async function generateExpensesCSV(startDate: string, endDate: string): Promise<string> {
-  const where: Record<string, unknown> = { deletedAt: null }
-  if (startDate || endDate) {
-    where.transactionDate = {}
-    if (startDate) (where.transactionDate as Record<string, Date>).gte = new Date(startDate)
-    if (endDate) (where.transactionDate as Record<string, Date>).lte = new Date(endDate + 'T23:59:59')
-  }
-
+async function generateExpensesCSV({ startDate, endDate, gardenId }: Options) {
   const records = await prisma.expense.findMany({
-    where,
-    include: { category: true, sourceAccount: true },
+    where: {
+      deletedAt: null,
+      ...dateWhere('transactionDate', startDate, endDate),
+      ...(gardenId ? { allocations: { some: { gardenId } } } : {}),
+    },
+    include: {
+      category: true,
+      garden: true,
+      vendor: true,
+      sourceAccount: true,
+      allocations: { include: { garden: true } },
+    },
     orderBy: { transactionDate: 'asc' },
   })
 
-  const header = 'Tanggal,Kategori,Deskripsi,Jumlah (Rp),Sumber Dana'
-  const rows = records.map((r: any) =>
-    [
-      escapeCSV(formatDateISO(r.transactionDate)),
-      escapeCSV(r.category.name),
-      escapeCSV(r.description || ''),
-      escapeCSV(r.amount),
-      escapeCSV(r.sourceAccount?.accountName || ''),
+  const header =
+    'Tanggal,Kategori,Deskripsi,Kebun,Porsi Kebun (Rp),Jumlah Transaksi (Rp),Jumlah,Satuan,Status Bayar,Termin,Penerima,Sumber Dana,Bermasalah,Bukti'
+  const rows = records.map((record) => {
+    const share = gardenId
+      ? record.allocations.find((allocation) => allocation.gardenId === gardenId)?.amount ?? 0
+      : record.amount
+    const gardenLabel = record.isShared
+      ? record.allocations.map((allocation) => allocation.garden.name).join(' + ')
+      : record.garden?.name || ''
+    return [
+      escapeCSV(formatDateISO(record.transactionDate)),
+      escapeCSV(record.category.name),
+      escapeCSV(record.description || ''),
+      escapeCSV(gardenLabel),
+      escapeCSV(share),
+      escapeCSV(record.amount),
+      escapeCSV(record.quantity ?? ''),
+      escapeCSV(record.unit || ''),
+      escapeCSV(record.paymentStatus),
+      escapeCSV(record.installmentLabel || ''),
+      escapeCSV(record.vendor?.name || record.recipientAccount || ''),
+      escapeCSV(record.sourceAccount?.accountName || ''),
+      escapeCSV(record.isFlagged ? 'Ya' : ''),
+      escapeCSV(record.transferProofPath || record.proofRef || ''),
     ].join(',')
-  )
+  })
 
   return [header, ...rows].join('\n')
 }
 
-async function generateHarvestCSV(startDate: string, endDate: string): Promise<string> {
-  const where: Record<string, unknown> = { deletedAt: null }
-  if (startDate || endDate) {
-    where.harvestDate = {}
-    if (startDate) (where.harvestDate as Record<string, Date>).gte = new Date(startDate)
-    if (endDate) (where.harvestDate as Record<string, Date>).lte = new Date(endDate + 'T23:59:59')
-  }
-
+async function generateHarvestCSV({ startDate, endDate, gardenId }: Options) {
   const records = await prisma.harvestRevenue.findMany({
-    where,
+    where: {
+      deletedAt: null,
+      ...dateWhere('harvestDate', startDate, endDate),
+      ...(gardenId ? { gardenId } : {}),
+    },
+    include: { garden: true, block: true },
     orderBy: { harvestDate: 'asc' },
   })
 
-  const header = 'Tanggal,Area,Total Kg,Normal Kg,BS Kg,Pendapatan Normal,Pendapatan BS,Total Pendapatan,BS%'
-  const rows = records.map((r: any) =>
+  const header =
+    'Tanggal,Kebun,Blok,Total Kg,Normal Kg,BS Kg,Harga Normal,Harga BS,Pendapatan Normal,Pendapatan BS,Total Pendapatan,BS%'
+  const rows = records.map((record) =>
     [
-      escapeCSV(formatDateISO(r.harvestDate)),
-      escapeCSV(r.workArea || ''),
-      escapeCSV(r.totalHarvestKg),
-      escapeCSV(r.normalKg),
-      escapeCSV(r.bsKg),
-      escapeCSV(r.normalRevenue),
-      escapeCSV(r.bsRevenue),
-      escapeCSV(r.totalRevenue),
-      escapeCSV(r.bsPercentage),
+      escapeCSV(formatDateISO(record.harvestDate)),
+      escapeCSV(record.garden.name),
+      escapeCSV(record.block?.name || ''),
+      escapeCSV(record.totalHarvestKg),
+      escapeCSV(record.normalKg),
+      escapeCSV(record.bsKg),
+      escapeCSV(record.normalPricePerKg),
+      escapeCSV(record.bsPricePerKg),
+      escapeCSV(record.normalRevenue),
+      escapeCSV(record.bsRevenue),
+      escapeCSV(record.totalRevenue),
+      escapeCSV(record.bsPercentage),
     ].join(',')
   )
 
   return [header, ...rows].join('\n')
 }
 
+async function generateCapitalCSV({ startDate, endDate, gardenId }: Options) {
+  const records = await prisma.capitalInjection.findMany({
+    where: {
+      deletedAt: null,
+      ...dateWhere('entryDate', startDate, endDate),
+      ...(gardenId ? { gardenId } : {}),
+    },
+    include: { garden: true, investor: true, destinationAccount: true },
+    orderBy: { entryDate: 'asc' },
+  })
+
+  const header =
+    'Tanggal,Kebun,Keterangan,Jenis,Investor,Nominal (Rp),Sudah Dikembalikan (Rp),Sumber Dana,Rekening Tujuan,Bukti'
+  const rows = records.map((record) =>
+    [
+      escapeCSV(formatDateISO(record.entryDate)),
+      escapeCSV(record.garden.name),
+      escapeCSV(record.description),
+      escapeCSV(record.fundingType === 'LOAN' ? 'Modal Kasbon (Utang)' : 'Modal Penyertaan'),
+      escapeCSV(record.investor?.name || ''),
+      escapeCSV(record.amount),
+      escapeCSV(record.repaidAmount),
+      escapeCSV(record.sourceAccount || ''),
+      escapeCSV(record.destinationAccount?.accountName || ''),
+      escapeCSV(record.proofPath || record.proofRef || ''),
+    ].join(',')
+  )
+
+  return [header, ...rows].join('\n')
+}
+
+async function generateBudgetCSV({ gardenId }: Options) {
+  const records = await prisma.budgetItem.findMany({
+    where: gardenId ? { gardenId } : {},
+    include: { garden: true },
+    orderBy: [{ gardenId: 'asc' }, { sortOrder: 'asc' }],
+  })
+
+  const header =
+    'Kebun,Pos Anggaran,Jumlah,Satuan,Harga Anggaran,Total Anggaran,Harga Faktual,Total Faktual,Selisih,Status Bayar'
+  const rows = records.map((record) =>
+    [
+      escapeCSV(record.garden.name),
+      escapeCSV(record.name),
+      escapeCSV(record.plannedQty),
+      escapeCSV(record.unit || ''),
+      escapeCSV(record.plannedUnitPrice),
+      escapeCSV(record.plannedTotal),
+      escapeCSV(record.actualUnitPrice ?? ''),
+      escapeCSV(record.actualTotal ?? ''),
+      escapeCSV(record.variance ?? ''),
+      escapeCSV(record.paymentStatus),
+    ].join(',')
+  )
+
+  return [header, ...rows].join('\n')
+}
+
+const GENERATORS: Record<
+  ReportType,
+  { run: (options: Options) => Promise<string>; file: string }
+> = {
+  payroll: { run: generatePayrollCSV, file: 'laporan-gaji' },
+  expenses: { run: generateExpensesCSV, file: 'laporan-pengeluaran' },
+  harvest: { run: generateHarvestCSV, file: 'laporan-panen' },
+  capital: { run: generateCapitalCSV, file: 'laporan-dana-masuk' },
+  budget: { run: generateBudgetCSV, file: 'laporan-anggaran' },
+}
+
 export async function GET(request: NextRequest) {
+  const { error } = await requireAuth()
+  if (error) return error
+
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type') as ReportType
-  const startDate = searchParams.get('startDate') || ''
-  const endDate = searchParams.get('endDate') || ''
+  const generator = GENERATORS[type]
 
-  if (!type || !['payroll', 'expenses', 'harvest'].includes(type)) {
-    return errorResponse('Parameter type tidak valid. Gunakan: payroll, expenses, harvest')
+  if (!generator) {
+    return errorResponse(
+      `Parameter type tidak valid. Gunakan: ${Object.keys(GENERATORS).join(', ')}`
+    )
   }
 
-  try {
-    let csv: string
-    let filename: string
+  const gardenIdRaw = searchParams.get('gardenId')
+  const gardenId =
+    gardenIdRaw && gardenIdRaw !== 'all' && parseInt(gardenIdRaw) > 0 ? parseInt(gardenIdRaw) : null
 
-    switch (type) {
-      case 'payroll':
-        csv = await generatePayrollCSV(startDate, endDate)
-        filename = 'laporan-gaji'
-        break
-      case 'expenses':
-        csv = await generateExpensesCSV(startDate, endDate)
-        filename = 'laporan-pengeluaran'
-        break
-      case 'harvest':
-        csv = await generateHarvestCSV(startDate, endDate)
-        filename = 'laporan-panen'
-        break
-      default:
-        return errorResponse('Tipe laporan tidak valid')
-    }
+  try {
+    const csv = await generator.run({
+      startDate: searchParams.get('startDate') || '',
+      endDate: searchParams.get('endDate') || '',
+      gardenId,
+    })
 
     const dateSuffix = new Date().toISOString().split('T')[0]
-    const bom = '\uFEFF'
+    const bom = '﻿'
 
     return new Response(bom + csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${filename}-${dateSuffix}.csv"`,
+        'Content-Disposition': `attachment; filename="${generator.file}-${dateSuffix}.csv"`,
       },
     })
   } catch (err) {

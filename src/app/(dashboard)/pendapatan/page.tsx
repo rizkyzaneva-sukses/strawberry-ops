@@ -8,12 +8,16 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FormField from '@/components/ui/FormField'
 import StatCard from '@/components/ui/StatCard'
 import ExportButton from '@/components/ui/ExportButton'
+import { useGarden } from '@/components/GardenProvider'
 import { formatIDR, formatDate } from '@/lib/utils'
 
 interface HarvestRevenue {
   id: number
   harvestDate: string
-  workArea: string | null
+  gardenId: number
+  blockId: number | null
+  garden: { id: number; name: string }
+  block: { id: number; name: string } | null
   normalPricePerKg: number
   bsPricePerKg: number
   totalHarvestKg: number
@@ -28,9 +32,10 @@ interface HarvestRevenue {
 }
 
 export default function PendapatanPage() {
+  const { gardens, activeGarden, selection } = useGarden()
   const [records, setRecords] = useState<HarvestRevenue[]>([])
   const [total, setTotal] = useState(0)
-  const [totals, setTotals] = useState({ totalRevenue: 0, normalRevenue: 0, bsRevenue: 0, totalHarvestKg: 0, bsKg: 0, normalKg: 0 })
+  const [totals, setTotals] = useState({ totalRevenue: 0, normalRevenue: 0, bsRevenue: 0, totalHarvestKg: 0, bsKg: 0, normalKg: 0, bsPercentage: 0 })
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState('harvestDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -45,7 +50,9 @@ export default function PendapatanPage() {
 
   // Form state
   const [formDate, setFormDate] = useState('')
-  const [formWorkArea, setFormWorkArea] = useState('')
+  const [formGardenId, setFormGardenId] = useState('')
+  const [formBlockId, setFormBlockId] = useState('')
+  const [formError, setFormError] = useState('')
   const [formNormalPrice, setFormNormalPrice] = useState('')
   const [formBsPrice, setFormBsPrice] = useState('')
   const [formTotalKg, setFormTotalKg] = useState('')
@@ -56,14 +63,15 @@ export default function PendapatanPage() {
     setLoading(true)
     const params = new URLSearchParams({
       page: String(page), limit: '20', sortBy, sortOrder, search, startDate, endDate,
+      gardenId: String(selection),
     })
     const res = await fetch(`/api/harvest-revenues?${params}`)
     const data = await res.json()
     setRecords(data.items || [])
     setTotal(data.total || 0)
-    setTotals(data.totals || { totalRevenue: 0, normalRevenue: 0, bsRevenue: 0, totalHarvestKg: 0, bsKg: 0, normalKg: 0 })
+    setTotals(data.totals || { totalRevenue: 0, normalRevenue: 0, bsRevenue: 0, totalHarvestKg: 0, bsKg: 0, normalKg: 0, bsPercentage: 0 })
     setLoading(false)
-  }, [page, sortBy, sortOrder, search, startDate, endDate])
+  }, [page, sortBy, sortOrder, search, startDate, endDate, selection])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
@@ -83,10 +91,12 @@ export default function PendapatanPage() {
   }
 
   function openForm(record?: HarvestRevenue) {
+    setFormError('')
     if (record) {
       setEditId(record.id)
       setFormDate(record.harvestDate.split('T')[0])
-      setFormWorkArea(record.workArea || '')
+      setFormGardenId(String(record.gardenId))
+      setFormBlockId(record.blockId ? String(record.blockId) : '')
       setFormNormalPrice(String(record.normalPricePerKg))
       setFormBsPrice(String(record.bsPricePerKg))
       setFormTotalKg(String(record.totalHarvestKg))
@@ -95,7 +105,8 @@ export default function PendapatanPage() {
     } else {
       setEditId(null)
       setFormDate(new Date().toISOString().split('T')[0])
-      setFormWorkArea('')
+      setFormGardenId(activeGarden ? String(activeGarden.id) : '')
+      setFormBlockId('')
       setFormTotalKg('')
       setFormBsKg('0')
       setFormNotes('')
@@ -104,20 +115,28 @@ export default function PendapatanPage() {
   }
 
   async function handleSave() {
-    if (!formDate || !formNormalPrice || !formBsPrice || !formTotalKg) return
+    if (!formDate || !formNormalPrice || !formBsPrice || !formTotalKg || !formGardenId) return
     setSaving(true)
+    setFormError('')
     const body = {
       harvestDate: formDate,
-      workArea: formWorkArea || null,
-      normalPricePerKg: formNormalPrice,
-      bsPricePerKg: formBsPrice,
-      totalHarvestKg: formTotalKg,
-      bsKg: formBsKg || '0',
+      gardenId: parseInt(formGardenId),
+      blockId: formBlockId ? parseInt(formBlockId) : null,
+      normalPricePerKg: parseInt(formNormalPrice),
+      bsPricePerKg: parseInt(formBsPrice),
+      totalHarvestKg: parseFloat(formTotalKg),
+      bsKg: parseFloat(formBsKg || '0'),
       notes: formNotes || null,
     }
     const url = editId ? `/api/harvest-revenues/${editId}` : '/api/harvest-revenues'
     const res = await fetch(url, { method: editId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    if (res.ok) { setShowForm(false); fetchRecords() }
+    if (res.ok) {
+      setShowForm(false)
+      fetchRecords()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setFormError(data.error || 'Gagal menyimpan data panen')
+    }
     setSaving(false)
   }
 
@@ -127,6 +146,8 @@ export default function PendapatanPage() {
     await fetch(`/api/harvest-revenues/${deleteId}`, { method: 'DELETE' })
     setDeleteId(null); setSaving(false); fetchRecords()
   }
+
+  const selectedGarden = gardens.find((garden) => garden.id === parseInt(formGardenId))
 
   // Auto-calculation preview
   const previewTotalKg = parseFloat(formTotalKg) || 0
@@ -139,7 +160,12 @@ export default function PendapatanPage() {
 
   const columns: Column<HarvestRevenue>[] = [
     { key: 'harvestDate', label: 'Tanggal Panen', sortable: true, render: (r) => formatDate(r.harvestDate) },
-    { key: 'workArea', label: 'Area', render: (r) => r.workArea || '-' },
+    { key: 'garden', label: 'Kebun', render: (r) => (
+      <span>
+        {r.garden.name}
+        {r.block && <span className="text-[var(--color-text-muted)] text-xs block">{r.block.name}</span>}
+      </span>
+    )},
     { key: 'totalHarvestKg', label: 'Total (kg)', align: 'right', sortable: true, render: (r) => `${r.totalHarvestKg.toLocaleString('id-ID')} kg` },
     { key: 'normalKg', label: 'Normal (kg)', align: 'right', render: (r) => `${r.normalKg.toLocaleString('id-ID')} kg` },
     { key: 'bsKg', label: 'BS (kg)', align: 'right', render: (r) => `${r.bsKg.toLocaleString('id-ID')} kg` },
@@ -179,7 +205,7 @@ export default function PendapatanPage() {
 
       <div className="card">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <input type="text" placeholder="Cari area..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
+          <input type="text" placeholder="Cari kebun / blok / catatan..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
           <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1) }} />
           <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1) }} />
           <button onClick={() => { setSearch(''); setStartDate(''); setEndDate(''); setPage(1) }} className="btn btn-secondary">Reset</button>
@@ -195,9 +221,30 @@ export default function PendapatanPage() {
           <FormField label="Tanggal Panen" required>
             <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} />
           </FormField>
-          <FormField label="Area Kerja">
-            <input type="text" value={formWorkArea} onChange={(e) => setFormWorkArea(e.target.value)} placeholder="Contoh: Blok A" />
-          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Kebun" required>
+              <select value={formGardenId} onChange={(e) => { setFormGardenId(e.target.value); setFormBlockId('') }}>
+                <option value="">Pilih kebun</option>
+                {gardens.map((garden) => (
+                  <option key={garden.id} value={garden.id}>{garden.name}</option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Blok">
+              <select
+                value={formBlockId}
+                onChange={(e) => setFormBlockId(e.target.value)}
+                disabled={!selectedGarden || selectedGarden.blocks.length === 0}
+              >
+                <option value="">
+                  {selectedGarden && selectedGarden.blocks.length === 0 ? 'Belum ada blok' : 'Tanpa blok'}
+                </option>
+                {selectedGarden?.blocks.map((block) => (
+                  <option key={block.id} value={block.id}>{block.name}</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Harga Normal/kg (Rp)" required>
               <input type="number" value={formNormalPrice} onChange={(e) => setFormNormalPrice(e.target.value)} placeholder="0" min="0" />
@@ -237,9 +284,11 @@ export default function PendapatanPage() {
             <textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} placeholder="Catatan tambahan..." />
           </FormField>
 
+          {formError && <p className="text-sm text-[var(--color-accent)]">{formError}</p>}
+
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={() => setShowForm(false)} className="btn btn-secondary">Batal</button>
-            <button onClick={handleSave} disabled={saving || !formDate || !formNormalPrice || !formBsPrice || !formTotalKg} className="btn btn-primary">
+            <button onClick={handleSave} disabled={saving || !formDate || !formNormalPrice || !formBsPrice || !formTotalKg || !formGardenId} className="btn btn-primary">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>

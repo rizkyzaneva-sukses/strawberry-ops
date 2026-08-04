@@ -3,10 +3,70 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-async function main() {
-  console.log('🌱 Seeding database...')
+/** Kebun Baru punya investor, Kebun Lama tidak. */
+const GARDENS = [
+  { code: 'KEBUN_BARU', name: 'Kebun Baru', hasInvestor: true, sortOrder: 1 },
+  { code: 'KEBUN_LAMA', name: 'Kebun Lama', hasInvestor: false, sortOrder: 2 },
+]
 
-  // Create default admin user
+const JOB_TYPES = [
+  'Pruning',
+  'Cabut Gulma',
+  'Semprot Gulma Jalur',
+  'Tanam Bibit',
+  'Panen',
+  'Kirim Panen',
+  'Penyiraman',
+  'Asisten Penyiraman',
+  'Semprot Obat',
+  'Cor Obat',
+  'Pemupukan (Berak)',
+  'Bekong Bibit',
+  'Pencatatan Laporan Kerja',
+  'Ngangkut Berak',
+  'Tunggu Kebun',
+  'Babad Lahan',
+]
+
+const EXPENSE_CATEGORIES = [
+  { code: 'LAHAN', name: 'Lahan' },
+  { code: 'BIBIT', name: 'Bibit' },
+  { code: 'KARUNG', name: 'Karung & Media Tanam' },
+  { code: 'JASA_NGARUNG', name: 'Jasa Ngarung' },
+  { code: 'PUPUK_OBAT', name: 'Pupuk & Obat' },
+  { code: 'SAUNG', name: 'Saung & Bangunan' },
+  { code: 'ALAT', name: 'Alat & Perlengkapan' },
+  { code: 'UPAH_HARIAN', name: 'Upah Borongan & Harian' },
+  { code: 'BENSIN', name: 'Bensin' },
+  { code: 'GAJI', name: 'Gaji Karyawan' },
+  { code: 'OPERASIONAL_HARIAN', name: 'Talangan Operasional Harian' },
+  { code: 'LAIN_LAIN', name: 'Lain-lain' },
+]
+
+const BANK_ACCOUNTS = [
+  { accountName: 'M Rizky Maulana', bankName: 'BCA', accountNumber: '1393927074' },
+  { accountName: 'Asfiyani Nur A', bankName: 'BCA', accountNumber: '1393387622' },
+  { accountName: 'Windi Krisdayani', bankName: 'BCA', accountNumber: '7751284792' },
+  { accountName: 'Ilham Firmansyah', bankName: 'BCA', accountNumber: '2330029458' },
+  { accountName: 'Kas Tunai', bankName: 'Tunai', accountNumber: 'CASH' },
+]
+
+const INVESTORS = [
+  { name: 'M Rizky Maulana', bankName: 'BCA', accountNumber: '1393927074' },
+  { name: 'Asfiyani Nur A', bankName: 'BCA', accountNumber: '1393387622' },
+  { name: 'Windi Krisdayani', bankName: 'BCA', accountNumber: '7751284792' },
+]
+
+function slug(value: string) {
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+}
+
+async function main() {
+  console.log('🌱 Seeding master data...')
+
   const passwordHash = await bcrypt.hash('admin123', 10)
   const admin = await prisma.user.upsert({
     where: { username: 'admin' },
@@ -19,76 +79,71 @@ async function main() {
       isActive: true,
     },
   })
-  console.log('✅ Admin user created:', admin.username)
+  console.log('✅ User admin siap')
 
-  // Seed expense categories
-  const categories = [
-    { name: 'Gaji', code: 'GAJI' },
-    { name: 'Pupuk & Obat', code: 'PUPUK_OBAT' },
-    { name: 'Alat & Perlengkapan', code: 'ALAT_PERLENGKAPAN' },
-    { name: 'Transportasi', code: 'TRANSPORTASI' },
-    { name: 'Sewa', code: 'SEWA' },
-    { name: 'Utilitas', code: 'UTILITAS' },
-    { name: 'Lainnya', code: 'LAINNYA' },
-  ]
-
-  for (const cat of categories) {
-    await prisma.expenseCategory.upsert({
-      where: { code: cat.code },
-      update: {},
-      create: cat,
+  for (const garden of GARDENS) {
+    await prisma.garden.upsert({
+      where: { code: garden.code },
+      update: { name: garden.name, hasInvestor: garden.hasInvestor },
+      create: garden,
     })
   }
-  console.log('✅ Expense categories seeded')
+  console.log(`✅ ${GARDENS.length} kebun siap`)
 
-  // Seed a sample bank account
-  await prisma.bankAccount.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      accountName: 'Kas Utama',
-      bankName: 'Tunai',
-      accountNumber: 'CASH',
-      isActive: true,
-    },
-  })
-  console.log('✅ Default bank account created')
-
-  // Seed sample employees
-  const employees = [
-    { fullName: 'Budi Santoso', phone: '081234567890', address: 'Kota Batu', wageNgabedug: 80000, wageNyore: 60000, startDate: new Date('2024-01-15'), status: 'ACTIVE' },
-    { fullName: 'Siti Aminah', phone: '081234567891', address: 'Kota Batu', wageNgabedug: 75000, wageNyore: 55000, startDate: new Date('2024-02-01'), status: 'ACTIVE' },
-    { fullName: 'Joko Widodo', phone: '081234567892', address: 'Malang', wageNgabedug: 90000, wageNyore: 70000, startDate: new Date('2024-03-01'), status: 'ACTIVE' },
-  ]
-
-  for (const emp of employees) {
-    const existing = await prisma.employee.findFirst({ where: { fullName: emp.fullName } })
-    if (!existing) {
-      await prisma.employee.create({ data: emp })
-    }
+  for (const [index, name] of JOB_TYPES.entries()) {
+    await prisma.jobType.upsert({
+      where: { code: slug(name) },
+      update: { name },
+      create: { name, code: slug(name), sortOrder: index + 1 },
+    })
   }
-  console.log('✅ Sample employees seeded')
+  console.log(`✅ ${JOB_TYPES.length} jenis pekerjaan siap`)
 
-  // Seed default commodity price
+  for (const [index, category] of EXPENSE_CATEGORIES.entries()) {
+    await prisma.expenseCategory.upsert({
+      where: { code: category.code },
+      update: { name: category.name },
+      create: { ...category, sortOrder: index + 1 },
+    })
+  }
+  console.log(`✅ ${EXPENSE_CATEGORIES.length} kategori pengeluaran siap`)
+
+  for (const account of BANK_ACCOUNTS) {
+    const existing = await prisma.bankAccount.findFirst({
+      where: { accountNumber: account.accountNumber },
+    })
+    if (!existing) await prisma.bankAccount.create({ data: account })
+  }
+  console.log(`✅ ${BANK_ACCOUNTS.length} rekening siap`)
+
+  for (const investor of INVESTORS) {
+    await prisma.investor.upsert({
+      where: { name: investor.name },
+      update: {},
+      create: investor,
+    })
+  }
+  console.log(`✅ ${INVESTORS.length} investor siap`)
+
   const existingPrice = await prisma.commodityPrice.findFirst()
   if (!existingPrice) {
     await prisma.commodityPrice.create({
       data: {
-        effectiveDate: new Date(),
-        normalPricePerKg: 35000,
-        bsPricePerKg: 15000,
+        effectiveDate: new Date('2026-07-08'),
+        normalPricePerKg: 22000,
+        bsPricePerKg: 4000,
         updatedBy: admin.id,
       },
     })
   }
-  console.log('✅ Default commodity price seeded')
+  console.log('✅ Harga komoditas siap')
 
-  console.log('🎉 Seeding complete!')
+  console.log('🎉 Seed master selesai. Jalankan `npm run db:import` untuk memuat data spreadsheet.')
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seeding failed:', e)
+    console.error('❌ Seed gagal:', e)
     process.exit(1)
   })
   .finally(async () => {

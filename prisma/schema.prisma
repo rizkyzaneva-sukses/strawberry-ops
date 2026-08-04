@@ -7,73 +7,262 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================================
+// MASTER: KEBUN, BLOK, TUGAS
+// ============================================================
+
+/// Setiap kebun punya pembukuan sendiri. Kebun Baru punya investor,
+/// Kebun Lama tidak (hasInvestor = false menyembunyikan modul Modal).
+model Garden {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  code        String   @unique
+  hasInvestor Boolean  @default(false) @map("has_investor")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  blocks             Block[]
+  payrollRecords     PayrollRecord[]
+  expenses           Expense[]
+  expenseAllocations ExpenseAllocation[]
+  expenseItems       ExpenseItem[]
+  harvestRevenues    HarvestRevenue[]
+  capitalInjections  CapitalInjection[]
+  assets             Asset[]
+  budgetItems        BudgetItem[]
+  employeeAdvances   EmployeeAdvance[]
+
+  @@map("gardens")
+}
+
+model Block {
+  id        Int      @id @default(autoincrement())
+  gardenId  Int      @map("garden_id")
+  name      String
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  garden          Garden           @relation(fields: [gardenId], references: [id])
+  payrollRecords  PayrollRecord[]
+  harvestRevenues HarvestRevenue[]
+
+  @@unique([gardenId, name])
+  @@map("blocks")
+}
+
+/// Jenis pekerjaan: Pruning, Panen, Penyiraman, Cor Obat, dst.
+model JobType {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  code      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  payrollRecords PayrollRecord[]
+
+  @@map("job_types")
+}
+
+// ============================================================
+// PENGGUNA & KARYAWAN
+// ============================================================
+
 model User {
   id           Int      @id @default(autoincrement())
   username     String   @unique
   passwordHash String   @map("password_hash")
   fullName     String   @map("full_name")
   phone        String?
-  role         String   // OWNER, MANAGER, STAFF
+  role         String // OWNER, MANAGER, STAFF
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  payrollRecords  PayrollRecord[]
-  expenses        Expense[]
-  harvestRevenue  HarvestRevenue[]
-  commodityPrice  CommodityPrice[]
-  passwordResets  PasswordReset[]
-  auditLogs      AuditLog[]
-  revisions      Revision[]
+  payrollRecords    PayrollRecord[]
+  expenses          Expense[]
+  harvestRevenue    HarvestRevenue[]
+  commodityPrice    CommodityPrice[]
+  passwordResets    PasswordReset[]
+  auditLogs         AuditLog[]
+  revisions         Revision[]
+  capitalInjections CapitalInjection[]
+  employeeAdvances  EmployeeAdvance[]
+  payrollPayments   PayrollPayment[]
 
   @@map("users")
 }
 
 model Employee {
-  id          Int       @id @default(autoincrement())
-  fullName    String    @map("full_name")
-  phone       String?
-  address     String?
-  wageNgabedug Int      @default(0) @map("wage_ngabedug") // IDR per day, shift pagi (7-12)
-  wageNyore    Int      @default(0) @map("wage_nyore") // IDR per day, shift siang (12-15)
-  startDate   DateTime  @map("start_date")
-  status      String    @default("ACTIVE") // ACTIVE, INACTIVE
-  deletedAt   DateTime? @map("deleted_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id       Int    @id @default(autoincrement())
+  fullName String @map("full_name")
+  phone    String?
+  address  String?
+  gender   String? // P (Perempuan), L (Laki-laki) - dipakai untuk rekap periode gaji
 
-  payrollRecords PayrollRecord[]
+  /// HARIAN (upah per shift) atau BULANAN (gaji tetap per bulan)
+  employmentType String @default("HARIAN") @map("employment_type")
+
+  wageNgabedug      Int @default(0) @map("wage_ngabedug") // shift pagi 07.00-12.00
+  wageNyore         Int @default(0) @map("wage_nyore") // shift siang 12.00-15.00
+  wageLemburPerHour Int @default(0) @map("wage_lembur_per_hour") // tarif lembur per jam
+  monthlySalary     Int @default(0) @map("monthly_salary") // khusus employmentType BULANAN
+
+  /// true untuk entri kolektif tanpa nama, mis. "Pekerja Harian (Grup)"
+  isGroup Boolean @default(false) @map("is_group")
+
+  startDate DateTime  @map("start_date")
+  status    String    @default("ACTIVE") // ACTIVE, INACTIVE
+  notes     String?
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  payrollRecords   PayrollRecord[]
+  advances         EmployeeAdvance[] @relation("AdvanceOwner")
+  advancesOnBehalf EmployeeAdvance[] @relation("AdvanceBeneficiary")
 
   @@map("employees")
 }
 
+// ============================================================
+// PENGGAJIAN
+// ============================================================
+
+/// Satu baris = satu orang, satu shift, satu pekerjaan, satu kebun.
+/// Satu orang bisa punya beberapa baris di tanggal yang sama.
 model PayrollRecord {
-  id             Int       @id @default(autoincrement())
-  employeeId     Int       @map("employee_id")
-  workDate       DateTime  @map("work_date")
-  workArea       String?   @map("work_area")
-  shiftNgabedug  Boolean   @default(false) @map("shift_ngabedug")
-  shiftNyore     Boolean   @default(false) @map("shift_nyore")
-  lemburHours    Float     @default(0) @map("lembur_hours")
-  wageAmount     Int       @map("wage_amount") // in IDR
-  inputBy        Int       @map("input_by")
-  notes          String?
-  deletedAt      DateTime? @map("deleted_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id         Int      @id @default(autoincrement())
+  employeeId Int      @map("employee_id")
+  gardenId   Int      @map("garden_id")
+  blockId    Int?     @map("block_id")
+  jobTypeId  Int?     @map("job_type_id")
+  workDate   DateTime @map("work_date")
 
-  employee Employee @relation(fields: [employeeId], references: [id])
-  user     User     @relation(fields: [inputBy], references: [id])
+  /// NGABEDUG (07-12) | NYORE (12-15) | LEMBUR | BORONGAN | BULANAN
+  shift     String
+  startTime String? @map("start_time")
+  endTime   String? @map("end_time")
 
+  lemburHours Float @default(0) @map("lembur_hours")
+
+  /// Jumlah orang untuk entri grup tanpa nama. Selalu 1 untuk karyawan bernama.
+  headcount Int @default(1)
+
+  wageAmount   Int     @map("wage_amount") // dalam IDR
+  isManualWage Boolean @default(false) @map("is_manual_wage") // borongan / override manual
+
+  periodId  Int?      @map("period_id")
+  inputBy   Int       @map("input_by")
+  notes     String?
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  employee Employee       @relation(fields: [employeeId], references: [id])
+  garden   Garden         @relation(fields: [gardenId], references: [id])
+  block    Block?         @relation(fields: [blockId], references: [id])
+  jobType  JobType?       @relation(fields: [jobTypeId], references: [id])
+  period   PayrollPeriod? @relation(fields: [periodId], references: [id])
+  user     User           @relation(fields: [inputBy], references: [id])
+
+  @@index([workDate])
+  @@index([gardenId, workDate])
   @@map("payroll_records")
 }
 
-model ExpenseCategory {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  code String @unique
+/// Periode gaji mingguan (Senin-Minggu). Lintas kebun - alokasi biaya
+/// per kebun sudah tersimpan di masing-masing PayrollRecord.
+model PayrollPeriod {
+  id        Int      @id @default(autoincrement())
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  status    String   @default("OPEN") // OPEN, LOCKED, PAID
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  expenses Expense[]
+  records  PayrollRecord[]
+  payments PayrollPayment[]
+  advances EmployeeAdvance[]
+
+  @@unique([startDate, endDate])
+  @@map("payroll_periods")
+}
+
+/// Pembayaran gaji bisa bertahap: "Sudah di TF batch 1", "batch 2".
+model PayrollPayment {
+  id              Int      @id @default(autoincrement())
+  periodId        Int      @map("period_id")
+  batchNo         Int      @default(1) @map("batch_no")
+  paidDate        DateTime @map("paid_date")
+  amount          Int
+  sourceAccountId Int?     @map("source_account_id")
+  proofPath       String?  @map("proof_path")
+  proofRef        String?  @map("proof_ref")
+  notes           String?
+  inputBy         Int      @map("input_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  period        PayrollPeriod @relation(fields: [periodId], references: [id])
+  sourceAccount BankAccount?  @relation(fields: [sourceAccountId], references: [id])
+  user          User          @relation(fields: [inputBy], references: [id])
+
+  @@map("payroll_payments")
+}
+
+/// Kasbon / piutang pegawai. Otomatis jadi pengurang di rekap periode gaji.
+model EmployeeAdvance {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int      @map("employee_id")
+  gardenId    Int?     @map("garden_id")
+  advanceDate DateTime @map("advance_date")
+  amount      Int
+
+  /// KASBON (pinjaman pegawai) | TALANGAN (dana talang untuk pegawai lain)
+  type String @default("KASBON")
+
+  /// Diisi kalau dana ditalangi orang lain, mis. Teh Dewi menalangi Mang Ama
+  beneficiaryId Int? @map("beneficiary_id")
+
+  description   String?
+  settledAmount Int       @default(0) @map("settled_amount")
+  periodId      Int?      @map("period_id") // periode gaji tempat kasbon dipotong
+  status        String    @default("OPEN") // OPEN, SETTLED
+  inputBy       Int       @map("input_by")
+  deletedAt     DateTime? @map("deleted_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  employee    Employee       @relation("AdvanceOwner", fields: [employeeId], references: [id])
+  beneficiary Employee?      @relation("AdvanceBeneficiary", fields: [beneficiaryId], references: [id])
+  garden      Garden?        @relation(fields: [gardenId], references: [id])
+  period      PayrollPeriod? @relation(fields: [periodId], references: [id])
+  user        User           @relation(fields: [inputBy], references: [id])
+
+  @@map("employee_advances")
+}
+
+// ============================================================
+// PENGELUARAN
+// ============================================================
+
+model ExpenseCategory {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  code      String  @unique
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  expenses     Expense[]
+  expenseItems ExpenseItem[]
+  budgetItems  BudgetItem[]
 
   @@map("expense_categories")
 }
@@ -87,69 +276,296 @@ model BankAccount {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  expenses Expense[]
+  expenses          Expense[]
+  capitalInjections CapitalInjection[]
+  payrollPayments   PayrollPayment[]
 
   @@map("bank_accounts")
 }
 
+/// Master penerima dana: pemasok material, tukang, jasa, e-wallet.
+model Vendor {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique
+  type          String   @default("VENDOR") // VENDOR, MATERIAL, JASA, PEKERJA, LAINNYA
+  bankName      String?  @map("bank_name")
+  accountNumber String?  @map("account_number")
+  accountHolder String?  @map("account_holder")
+  phone         String?
+  /// Ditandai bermasalah - transaksinya perlu ditinjau
+  isFlagged     Boolean  @default(false) @map("is_flagged")
+  notes         String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  expenses Expense[]
+  assets   Asset[]
+
+  @@map("vendors")
+}
+
 model Expense {
-  id               Int       @id @default(autoincrement())
-  transactionDate  DateTime  @map("transaction_date")
-  categoryId       Int       @map("category_id")
-  description      String?
-  amount           Int       // in IDR
-  sourceAccountId  Int?      @map("source_account_id")
-  recipientAccount String?   @map("recipient_account")
-  transferProofPath String?  @map("transfer_proof_path")
-  receiptProofPath  String?  @map("receipt_proof_path")
-  inputBy          Int       @map("input_by")
-  deletedAt        DateTime? @map("deleted_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id              Int      @id @default(autoincrement())
+  transactionDate DateTime @map("transaction_date")
 
-  category      ExpenseCategory @relation(fields: [categoryId], references: [id])
-  sourceAccount BankAccount?    @relation(fields: [sourceAccountId], references: [id])
-  user          User            @relation(fields: [inputBy], references: [id])
+  /// Kebun utama. null berarti biaya bersama - lihat allocations.
+  gardenId   Int?  @map("garden_id")
+  categoryId Int   @map("category_id")
+  vendorId   Int?  @map("vendor_id")
 
+  description String?
+  amount      Int // total dalam IDR
+
+  /// Untuk pembelian bersatuan, mis. bensin 4 liter x Rp15.000
+  quantity  Float?
+  unit      String?
+  unitPrice Int?    @map("unit_price")
+
+  /// LUNAS | DP | KURANG_BAYAR | BELUM_BAYAR
+  paymentStatus    String  @default("LUNAS") @map("payment_status")
+  /// Label termin, mis. "Tahap 1", "DP", "Pelunasan"
+  installmentLabel String? @map("installment_label")
+
+  budgetItemId Int? @map("budget_item_id")
+  assetId      Int? @map("asset_id")
+
+  /// true bila biaya dipikul dua kebun - porsinya ada di allocations
+  isShared Boolean @default(false) @map("is_shared")
+
+  sourceAccountId   Int?    @map("source_account_id")
+  recipientAccount  String? @map("recipient_account")
+  transferProofPath String? @map("transfer_proof_path")
+  receiptProofPath  String? @map("receipt_proof_path")
+  /// Nama berkas bukti dari spreadsheet, sebelum file diunggah
+  proofRef          String? @map("proof_ref")
+
+  /// Transaksi bertanda masalah (nota kosong, selisih harga, dll)
+  isFlagged Boolean @default(false) @map("is_flagged")
+  flagNote  String? @map("flag_note")
+
+  inputBy   Int       @map("input_by")
+  notes     String?
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  garden        Garden?             @relation(fields: [gardenId], references: [id])
+  category      ExpenseCategory     @relation(fields: [categoryId], references: [id])
+  vendor        Vendor?             @relation(fields: [vendorId], references: [id])
+  sourceAccount BankAccount?        @relation(fields: [sourceAccountId], references: [id])
+  budgetItem    BudgetItem?         @relation(fields: [budgetItemId], references: [id])
+  asset         Asset?              @relation(fields: [assetId], references: [id])
+  user          User                @relation(fields: [inputBy], references: [id])
+  allocations   ExpenseAllocation[]
+  items         ExpenseItem[]
+
+  @@index([transactionDate])
+  @@index([gardenId, transactionDate])
   @@map("expenses")
 }
 
+/// Porsi biaya per kebun. Selalu diisi - untuk biaya satu kebun
+/// isinya satu baris dengan nominal penuh.
+model ExpenseAllocation {
+  id        Int @id @default(autoincrement())
+  expenseId Int @map("expense_id")
+  gardenId  Int @map("garden_id")
+  amount    Int
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  garden  Garden  @relation(fields: [gardenId], references: [id])
+
+  @@unique([expenseId, gardenId])
+  @@map("expense_allocations")
+}
+
+/// Rincian bila satu transfer mencakup beberapa keperluan sekaligus.
+model ExpenseItem {
+  id          Int     @id @default(autoincrement())
+  expenseId   Int     @map("expense_id")
+  description String
+  amount      Int
+  categoryId  Int?    @map("category_id")
+  gardenId    Int?    @map("garden_id")
+  proofRef    String? @map("proof_ref")
+
+  expense  Expense          @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id])
+  garden   Garden?          @relation(fields: [gardenId], references: [id])
+
+  @@map("expense_items")
+}
+
+// ============================================================
+// MODAL, ASET, ANGGARAN
+// ============================================================
+
+model Investor {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique
+  phone         String?
+  bankName      String?  @map("bank_name")
+  accountNumber String?  @map("account_number")
+  notes         String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  capitalInjections CapitalInjection[]
+
+  @@map("investors")
+}
+
+/// Dana masuk. EQUITY = modal penyertaan, LOAN = modal kasbon (utang
+/// yang harus dikembalikan).
+model CapitalInjection {
+  id          Int      @id @default(autoincrement())
+  gardenId    Int      @map("garden_id")
+  entryDate   DateTime @map("entry_date")
+  description String
+  investorId  Int?     @map("investor_id")
+
+  /// EQUITY | LOAN
+  fundingType String @default("EQUITY") @map("funding_type")
+  amount      Int
+
+  sourceAccount        String? @map("source_account")
+  destinationAccountId Int?    @map("destination_account_id")
+
+  proofPath String? @map("proof_path")
+  proofRef  String? @map("proof_ref")
+
+  /// Khusus LOAN: berapa yang sudah dikembalikan
+  repaidAmount Int @default(0) @map("repaid_amount")
+
+  notes     String?
+  inputBy   Int       @map("input_by")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  garden             Garden       @relation(fields: [gardenId], references: [id])
+  investor           Investor?    @relation(fields: [investorId], references: [id])
+  destinationAccount BankAccount? @relation(fields: [destinationAccountId], references: [id])
+  user               User         @relation(fields: [inputBy], references: [id])
+
+  @@index([gardenId, entryDate])
+  @@map("capital_injections")
+}
+
+/// Aset & alat. ownershipShare < 1 untuk alat patungan dengan kebun lain.
+model Asset {
+  id           Int       @id @default(autoincrement())
+  gardenId     Int?      @map("garden_id")
+  name         String
+  category     String? // MESIN, PERLENGKAPAN, BANGUNAN, LAINNYA
+  acquiredDate DateTime? @map("acquired_date")
+
+  quantity       Float @default(1)
+  unitPrice      Int   @default(0) @map("unit_price")
+  /// Porsi kepemilikan, mis. 0.5 untuk patungan dengan kebun lama
+  ownershipShare Float @default(1) @map("ownership_share")
+  totalCost      Int   @map("total_cost")
+
+  paymentStatus String  @default("LUNAS") @map("payment_status")
+  vendorId      Int?    @map("vendor_id")
+  notes         String?
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  garden   Garden?   @relation(fields: [gardenId], references: [id])
+  vendor   Vendor?   @relation(fields: [vendorId], references: [id])
+  expenses Expense[]
+
+  @@map("assets")
+}
+
+/// Anggaran capex vs realisasi. Selisih = (harga anggaran - harga faktual) x qty.
+model BudgetItem {
+  id       Int    @id @default(autoincrement())
+  gardenId Int    @map("garden_id")
+  name     String
+
+  categoryId Int? @map("category_id")
+
+  plannedQty       Float   @default(0) @map("planned_qty")
+  unit             String?
+  plannedUnitPrice Int     @default(0) @map("planned_unit_price")
+  plannedTotal     Int     @default(0) @map("planned_total")
+
+  actualUnitPrice Int? @map("actual_unit_price")
+  actualTotal     Int? @map("actual_total")
+  /// Positif = hemat, negatif = boros
+  variance        Int?
+
+  paymentStatus String  @default("BELUM_BAYAR") @map("payment_status")
+  notes         String?
+  sortOrder     Int     @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  garden   Garden           @relation(fields: [gardenId], references: [id])
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id])
+  expenses Expense[]
+
+  @@map("budget_items")
+}
+
+// ============================================================
+// PENDAPATAN
+// ============================================================
+
 model HarvestRevenue {
-  id               Int       @id @default(autoincrement())
-  harvestDate      DateTime  @map("harvest_date")
-  workArea         String?   @map("work_area")
-  normalPricePerKg Int       @map("normal_price_per_kg")
-  bsPricePerKg     Int       @map("bs_price_per_kg")
-  totalHarvestKg   Float     @map("total_harvest_kg")
-  bsKg             Float     @map("bs_kg")
-  normalKg         Float     @map("normal_kg")
-  normalRevenue    Int       @map("normal_revenue")
-  bsRevenue        Int       @map("bs_revenue")
-  totalRevenue     Int       @map("total_revenue")
-  bsPercentage     Float     @map("bs_percentage")
-  inputBy          Int       @map("input_by")
-  notes            String?
-  deletedAt        DateTime? @map("deleted_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  gardenId    Int      @map("garden_id")
+  blockId     Int?     @map("block_id")
+  harvestDate DateTime @map("harvest_date")
 
-  user User @relation(fields: [inputBy], references: [id])
+  normalPricePerKg Int   @map("normal_price_per_kg")
+  bsPricePerKg     Int   @map("bs_price_per_kg")
+  totalHarvestKg   Float @map("total_harvest_kg")
+  bsKg             Float @map("bs_kg")
+  normalKg         Float @map("normal_kg")
+  normalRevenue    Int   @map("normal_revenue")
+  bsRevenue        Int   @map("bs_revenue")
+  totalRevenue     Int   @map("total_revenue")
+  bsPercentage     Float @map("bs_percentage")
 
+  inputBy   Int       @map("input_by")
+  notes     String?
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  garden Garden @relation(fields: [gardenId], references: [id])
+  block  Block? @relation(fields: [blockId], references: [id])
+  user   User   @relation(fields: [inputBy], references: [id])
+
+  @@index([harvestDate])
+  @@index([gardenId, harvestDate])
   @@map("harvest_revenues")
 }
 
 model CommodityPrice {
-  id             Int      @id @default(autoincrement())
-  effectiveDate  DateTime @map("effective_date")
-  normalPricePerKg Int    @map("normal_price_per_kg")
-  bsPricePerKg     Int    @map("bs_price_per_kg")
-  updatedBy      Int      @map("updated_by")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id               Int      @id @default(autoincrement())
+  effectiveDate    DateTime @map("effective_date")
+  normalPricePerKg Int      @map("normal_price_per_kg")
+  bsPricePerKg     Int      @map("bs_price_per_kg")
+  updatedBy        Int      @map("updated_by")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [updatedBy], references: [id])
 
   @@map("commodity_prices")
 }
+
+// ============================================================
+// SISTEM
+// ============================================================
 
 model PasswordReset {
   id        Int      @id @default(autoincrement())
@@ -183,7 +599,7 @@ model Revision {
   id          Int      @id @default(autoincrement())
   title       String
   description String?
-  images      String?  @default("[]")  // JSON array of image paths
+  images      String?  @default("[]")
   priority    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
   status      String   @default("OPEN") // OPEN, IN_PROGRESS, DONE
   createdBy   Int      @map("created_by")

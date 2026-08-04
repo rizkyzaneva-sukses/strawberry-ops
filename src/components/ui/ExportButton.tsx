@@ -1,14 +1,19 @@
 'use client'
 
+import { useGarden } from '@/components/GardenProvider'
+
 interface ExportButtonProps {
-  type: 'payroll' | 'expenses' | 'harvest'
+  type: 'payroll' | 'expenses' | 'harvest' | 'capital' | 'budget'
   startDate?: string
   endDate?: string
 }
 
 export default function ExportButton({ type, startDate, endDate }: ExportButtonProps) {
+  const { selection } = useGarden()
+
   async function handleExport() {
-    const params = new URLSearchParams({ type })
+    // Laporan mengikuti kebun yang sedang aktif di switcher.
+    const params = new URLSearchParams({ type, gardenId: String(selection) })
     if (startDate) params.set('startDate', startDate)
     if (endDate) params.set('endDate', endDate)
 
@@ -19,7 +24,8 @@ export default function ExportButton({ type, startDate, endDate }: ExportButtonP
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || `export-${type}.csv`
+    a.download =
+      res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || `export-${type}.csv`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
