@@ -32,7 +32,11 @@ export async function PUT(
   const { id } = await params
   try {
     const body = await request.json()
-    const { fullName, phone, address, wageNgabedug, wageNyore, startDate, status } = body
+    const {
+      fullName, phone, address, gender, employmentType,
+      wageNgabedug, wageNyore, wageLemburPerHour, monthlySalary,
+      isGroup, notes, startDate, status,
+    } = body
 
     const existing = await prisma.employee.findFirst({
       where: { id: parseInt(id), deletedAt: null },
@@ -47,8 +51,14 @@ export async function PUT(
         ...(fullName !== undefined && { fullName }),
         ...(phone !== undefined && { phone: phone || null }),
         ...(address !== undefined && { address: address || null }),
+        ...(gender !== undefined && { gender: gender || null }),
+        ...(employmentType !== undefined && { employmentType }),
         ...(wageNgabedug !== undefined && { wageNgabedug: parseInt(wageNgabedug) }),
         ...(wageNyore !== undefined && { wageNyore: parseInt(wageNyore) }),
+        ...(wageLemburPerHour !== undefined && { wageLemburPerHour: parseInt(wageLemburPerHour) }),
+        ...(monthlySalary !== undefined && { monthlySalary: parseInt(monthlySalary) }),
+        ...(isGroup !== undefined && { isGroup: Boolean(isGroup) }),
+        ...(notes !== undefined && { notes: notes || null }),
         ...(startDate !== undefined && { startDate: new Date(startDate) }),
         ...(status !== undefined && { status }),
       },

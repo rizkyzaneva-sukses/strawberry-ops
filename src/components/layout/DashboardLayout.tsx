@@ -6,6 +6,7 @@ import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import Header from './Header'
 import MobileDrawer from './MobileDrawer'
+import { GardenProvider } from '@/components/GardenProvider'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -23,6 +24,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   }
 
   return (
+    <GardenProvider>
     <div className="min-h-screen">
       <Sidebar user={user} onLogout={handleLogout} />
 
@@ -41,5 +43,6 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         onLogout={handleLogout}
       />
     </div>
+    </GardenProvider>
   )
 }

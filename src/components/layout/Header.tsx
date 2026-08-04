@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useTheme } from '@/components/ThemeProvider'
+import GardenSwitcher from './GardenSwitcher'
 
 interface HeaderProps {
   user: { fullName: string; role: string }
@@ -30,9 +31,15 @@ export default function Header({ user, onLogout, onMenuToggle }: HeaderProps) {
           <h1 className="font-bold text-sm">StrawberryOps</h1>
         </div>
 
-        <div className="hidden lg:block" />
+        <div className="hidden lg:block">
+          <GardenSwitcher />
+        </div>
 
         <div className="flex items-center gap-2">
+          <div className="lg:hidden">
+            <GardenSwitcher />
+          </div>
+
           {/* Theme Toggle */}
           <button
             onClick={toggle}

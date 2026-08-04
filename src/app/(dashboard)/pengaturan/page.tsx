@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation'
 
 const settingsMenus = [
+  { label: '🌱 Kebun & Blok', desc: 'Kelola blok tiap kebun', href: '/pengaturan/blok' },
+  { label: '🧾 Penerima & Vendor', desc: 'Master penerima dana', href: '/pengaturan/vendor' },
+  { label: '🛠️ Jenis Pekerjaan', desc: 'Daftar tugas harian', href: '/pengaturan/pekerjaan' },
   { label: '👤 Manajemen Users', desc: 'Kelola akun pengguna', href: '/pengaturan/users' },
   { label: '🏦 Rekening Bank', desc: 'Kelola data rekening', href: '/pengaturan/bank-accounts' },
   { label: '💲 Harga Komoditas', desc: 'Atur harga stroberi', href: '/pengaturan/commodity-prices' },

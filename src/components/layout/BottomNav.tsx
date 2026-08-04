@@ -3,14 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: '📊' },
-  { href: '/gaji', label: 'Gaji', icon: '💰' },
-  { href: '/pengeluaran', label: 'Pengeluaran', icon: '📤' },
-  { href: '/pendapatan', label: 'Panen', icon: '🍓' },
-  { href: '/revisi', label: 'Revisi', icon: '📝' },
-]
+import { BOTTOM_NAV, isActivePath } from './menus'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -18,8 +11,8 @@ export default function BottomNav() {
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--color-surface)] border-t border-[var(--color-border)] z-50">
       <div className="flex items-center justify-around h-16">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+        {BOTTOM_NAV.map((item) => {
+          const isActive = isActivePath(pathname, item.href)
           return (
             <Link
               key={item.href}

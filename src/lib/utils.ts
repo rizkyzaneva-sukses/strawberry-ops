@@ -45,15 +45,37 @@ export function parseDateOnly(dateStr: string): Date {
   return new Date(y, m - 1, d)
 }
 
-export function calculateWage(
-  wageNgabedug: number,
-  wageNyore: number,
-  shiftNgabedug: boolean,
-  shiftNyore: boolean,
-  lemburHours: number
+export const SHIFTS = ['NGABEDUG', 'NYORE', 'LEMBUR', 'BORONGAN'] as const
+export type Shift = (typeof SHIFTS)[number]
+
+export const SHIFT_LABELS: Record<Shift, string> = {
+  NGABEDUG: 'Ngabedug (07.00 - 12.00)',
+  NYORE: 'Nyore (12.00 - 15.00)',
+  LEMBUR: 'Lembur',
+  BORONGAN: 'Borongan',
+}
+
+export type WageRates = {
+  wageNgabedug: number
+  wageNyore: number
+  wageLemburPerHour: number
+}
+
+/**
+ * Upah satu shift. Tarif lembur diambil per karyawan, bukan angka tetap,
+ * karena di lapangan tiap orang berbeda. Shift BORONGAN nominalnya diisi
+ * manual sehingga fungsi ini mengembalikan 0.
+ */
+export function calculateShiftWage(
+  rates: WageRates,
+  shift: string,
+  lemburHours = 0,
+  headcount = 1
 ): number {
-  const LEMBUR_RATE = 10000 // 10rb per hour
-  return (shiftNgabedug ? wageNgabedug : 0) + (shiftNyore ? wageNyore : 0) + Math.round(lemburHours * LEMBUR_RATE)
+  const base =
+    shift === 'NGABEDUG' ? rates.wageNgabedug : shift === 'NYORE' ? rates.wageNyore : 0
+  const lembur = Math.round(lemburHours * rates.wageLemburPerHour)
+  return (base + lembur) * Math.max(1, headcount)
 }
 
 export function cn(...classes: (string | undefined | null | false)[]): string {

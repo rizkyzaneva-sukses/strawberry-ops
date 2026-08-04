@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
+    "db:extract": "python scripts/extract_cashflow.py",
+    "db:import": "tsx prisma/import.ts",
+    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts && tsx prisma/import.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

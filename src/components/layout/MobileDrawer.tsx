@@ -2,7 +2,9 @@
 
 import { useEffect } from 'react'
 import { useTheme } from '@/components/ThemeProvider'
+import { useGarden } from '@/components/GardenProvider'
 import { usePathname } from 'next/navigation'
+import { isActivePath, visibleGroups } from './menus'
 
 interface MobileDrawerProps {
   isOpen: boolean
@@ -11,18 +13,14 @@ interface MobileDrawerProps {
   onLogout: () => void
 }
 
-const menus = [
-  { label: 'Dashboard', icon: '📊', href: '/' },
-  { label: 'Gaji', icon: '💰', href: '/gaji' },
-  { label: 'Pengeluaran', icon: '📤', href: '/pengeluaran' },
-  { label: 'Panen', icon: '🍓', href: '/pendapatan' },
-  { label: 'Revisi', icon: '📝', href: '/revisi' },
-  { label: 'Pengaturan', icon: '⚙️', href: '/pengaturan' },
-]
-
 export default function MobileDrawer({ isOpen, onClose, user, onLogout }: MobileDrawerProps) {
   const { theme, toggle } = useTheme()
+  const { activeGarden, gardens } = useGarden()
   const pathname = usePathname()
+
+  const showInvestorMenus = activeGarden
+    ? activeGarden.hasInvestor
+    : gardens.some((garden) => garden.hasInvestor)
 
   useEffect(() => {
     if (isOpen) {
@@ -58,7 +56,9 @@ export default function MobileDrawer({ isOpen, onClose, user, onLogout }: Mobile
               <span className="text-2xl">🍓</span>
               <div>
                 <h1 className="font-bold text-base">StrawberryOps</h1>
-                <p className="text-xs text-[var(--color-text-muted)]">Manajemen Kebun Stroberi</p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {activeGarden ? activeGarden.name : 'Semua Kebun'}
+                </p>
               </div>
             </div>
             <button
@@ -106,19 +106,26 @@ export default function MobileDrawer({ isOpen, onClose, user, onLogout }: Mobile
 
         {/* Menu Items */}
         <nav className="flex-1 overflow-y-auto py-2 px-3">
-          {menus.map((menu, i) => (
-            <button
-              key={i}
-              onClick={() => { handleNavigate(menu.href); onClose(); }}
-              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
-                pathname === menu.href || (menu.href !== '/' && pathname.startsWith(menu.href))
-                  ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-light)]'
-              }`}
-            >
-              <span className="text-lg">{menu.icon}</span>
-              <span>{menu.label}</span>
-            </button>
+          {visibleGroups(showInvestorMenus).map((group) => (
+            <div key={group.title} className="mb-3">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                {group.title}
+              </p>
+              {group.items.map((menu) => (
+                <button
+                  key={menu.href}
+                  onClick={() => { handleNavigate(menu.href); onClose(); }}
+                  className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
+                    isActivePath(pathname, menu.href)
+                      ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium'
+                      : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-light)]'
+                  }`}
+                >
+                  <span className="text-lg">{menu.icon}</span>
+                  <span>{menu.label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
 

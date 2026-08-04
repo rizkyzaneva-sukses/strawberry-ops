@@ -13,8 +13,14 @@ interface Employee {
   fullName: string
   phone: string | null
   address: string | null
+  gender: string | null
+  employmentType: string
   wageNgabedug: number
   wageNyore: number
+  wageLemburPerHour: number
+  monthlySalary: number
+  isGroup: boolean
+  notes: string | null
   startDate: string
   status: string
 }
@@ -37,10 +43,17 @@ export default function KaryawanPage() {
   const [formName, setFormName] = useState('')
   const [formPhone, setFormPhone] = useState('')
   const [formAddress, setFormAddress] = useState('')
+  const [formGender, setFormGender] = useState('')
+  const [formEmploymentType, setFormEmploymentType] = useState('HARIAN')
   const [formWageNgabedug, setFormWageNgabedug] = useState('')
   const [formWageNyore, setFormWageNyore] = useState('')
+  const [formWageLembur, setFormWageLembur] = useState('')
+  const [formMonthlySalary, setFormMonthlySalary] = useState('')
+  const [formIsGroup, setFormIsGroup] = useState(false)
+  const [formNotes, setFormNotes] = useState('')
   const [formStartDate, setFormStartDate] = useState('')
   const [formStatus, setFormStatus] = useState('ACTIVE')
+  const [formError, setFormError] = useState('')
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true)
@@ -63,13 +76,20 @@ export default function KaryawanPage() {
   }
 
   function openForm(record?: Employee) {
+    setFormError('')
     if (record) {
       setEditId(record.id)
       setFormName(record.fullName)
       setFormPhone(record.phone || '')
       setFormAddress(record.address || '')
+      setFormGender(record.gender || '')
+      setFormEmploymentType(record.employmentType)
       setFormWageNgabedug(String(record.wageNgabedug))
       setFormWageNyore(String(record.wageNyore))
+      setFormWageLembur(String(record.wageLemburPerHour))
+      setFormMonthlySalary(String(record.monthlySalary))
+      setFormIsGroup(record.isGroup)
+      setFormNotes(record.notes || '')
       setFormStartDate(record.startDate.split('T')[0])
       setFormStatus(record.status)
     } else {
@@ -77,8 +97,14 @@ export default function KaryawanPage() {
       setFormName('')
       setFormPhone('')
       setFormAddress('')
+      setFormGender('')
+      setFormEmploymentType('HARIAN')
       setFormWageNgabedug('')
       setFormWageNyore('')
+      setFormWageLembur('')
+      setFormMonthlySalary('')
+      setFormIsGroup(false)
+      setFormNotes('')
       setFormStartDate(new Date().toISOString().split('T')[0])
       setFormStatus('ACTIVE')
     }
@@ -88,18 +114,31 @@ export default function KaryawanPage() {
   async function handleSave() {
     if (!formName) return
     setSaving(true)
+    setFormError('')
     const body = {
       fullName: formName,
       phone: formPhone || null,
       address: formAddress || null,
+      gender: formGender || null,
+      employmentType: formEmploymentType,
       wageNgabedug: formWageNgabedug ? parseInt(formWageNgabedug) : 0,
       wageNyore: formWageNyore ? parseInt(formWageNyore) : 0,
+      wageLemburPerHour: formWageLembur ? parseInt(formWageLembur) : 0,
+      monthlySalary: formMonthlySalary ? parseInt(formMonthlySalary) : 0,
+      isGroup: formIsGroup,
+      notes: formNotes || null,
       startDate: formStartDate,
       status: formStatus,
     }
     const url = editId ? `/api/employees/${editId}` : '/api/employees'
     const res = await fetch(url, { method: editId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    if (res.ok) { setShowForm(false); fetchEmployees() }
+    if (res.ok) {
+      setShowForm(false)
+      fetchEmployees()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setFormError(data.error || 'Gagal menyimpan data karyawan')
+    }
     setSaving(false)
   }
 
@@ -111,10 +150,23 @@ export default function KaryawanPage() {
   }
 
   const columns: Column<Employee>[] = [
-    { key: 'fullName', label: 'Nama', sortable: true },
-    { key: 'phone', label: 'Telepon', render: (r) => r.phone || '-' },
-    { key: 'wageNgabedug', label: 'Upah Ngabedug', align: 'right', sortable: true, render: (r) => formatIDR(r.wageNgabedug) },
-    { key: 'wageNyore', label: 'Upah Nyore', align: 'right', sortable: true, render: (r) => formatIDR(r.wageNyore) },
+    { key: 'fullName', label: 'Nama', sortable: true, render: (r) => (
+      <span>
+        {r.fullName}
+        {r.isGroup && <span className="text-[var(--color-text-muted)] text-xs block">entri kolektif</span>}
+      </span>
+    )},
+    { key: 'employmentType', label: 'Tipe', render: (r) => (
+      <span className="badge badge-info">{r.employmentType === 'BULANAN' ? 'Bulanan' : 'Harian'}</span>
+    )},
+    { key: 'wageNgabedug', label: 'Ngabedug', align: 'right', sortable: true, render: (r) =>
+      r.employmentType === 'BULANAN' ? '-' : formatIDR(r.wageNgabedug) },
+    { key: 'wageNyore', label: 'Nyore', align: 'right', sortable: true, render: (r) =>
+      r.employmentType === 'BULANAN' ? '-' : formatIDR(r.wageNyore) },
+    { key: 'wageLemburPerHour', label: 'Lembur/jam', align: 'right', render: (r) =>
+      r.wageLemburPerHour ? formatIDR(r.wageLemburPerHour) : '-' },
+    { key: 'monthlySalary', label: 'Gaji Bulanan', align: 'right', render: (r) =>
+      r.monthlySalary ? formatIDR(r.monthlySalary) : '-' },
     { key: 'startDate', label: 'Mulai Kerja', sortable: true, render: (r) => formatDate(r.startDate) },
     { key: 'status', label: 'Status', align: 'center', render: (r) => (
       <span className={`badge ${r.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'}`}>
@@ -166,12 +218,49 @@ export default function KaryawanPage() {
           <FormField label="Alamat">
             <textarea value={formAddress} onChange={(e) => setFormAddress(e.target.value)} rows={2} placeholder="Alamat karyawan" />
           </FormField>
-          <FormField label="Upah Ngabedug (Rp/hari)" required>
-            <input type="number" value={formWageNgabedug} onChange={(e) => setFormWageNgabedug(e.target.value)} placeholder="0" min="0" />
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Jenis Kelamin">
+              <select value={formGender} onChange={(e) => setFormGender(e.target.value)}>
+                <option value="">Tidak diisi</option>
+                <option value="P">Perempuan</option>
+                <option value="L">Laki-laki</option>
+              </select>
+            </FormField>
+            <FormField label="Tipe Penggajian" required>
+              <select value={formEmploymentType} onChange={(e) => setFormEmploymentType(e.target.value)}>
+                <option value="HARIAN">Harian (per shift)</option>
+                <option value="BULANAN">Bulanan (gaji tetap)</option>
+              </select>
+            </FormField>
+          </div>
+
+          {formEmploymentType === 'BULANAN' ? (
+            <FormField label="Gaji Bulanan (Rp)" required>
+              <input type="number" value={formMonthlySalary} onChange={(e) => setFormMonthlySalary(e.target.value)} placeholder="0" min="0" />
+            </FormField>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              <FormField label="Ngabedug (Rp)" required>
+                <input type="number" value={formWageNgabedug} onChange={(e) => setFormWageNgabedug(e.target.value)} placeholder="0" min="0" />
+              </FormField>
+              <FormField label="Nyore (Rp)" required>
+                <input type="number" value={formWageNyore} onChange={(e) => setFormWageNyore(e.target.value)} placeholder="0" min="0" />
+              </FormField>
+              <FormField label="Lembur (Rp/jam)">
+                <input type="number" value={formWageLembur} onChange={(e) => setFormWageLembur(e.target.value)} placeholder="0" min="0" />
+              </FormField>
+            </div>
+          )}
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={formIsGroup} onChange={(e) => setFormIsGroup(e.target.checked)} className="w-4 h-4" />
+            <span>Entri kolektif (dipakai untuk mencatat beberapa orang sekaligus)</span>
+          </label>
+
+          <FormField label="Catatan">
+            <textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} placeholder="Tugas utama, dll" />
           </FormField>
-          <FormField label="Upah Nyore (Rp/hari)" required>
-            <input type="number" value={formWageNyore} onChange={(e) => setFormWageNyore(e.target.value)} placeholder="0" min="0" />
-          </FormField>
+
           <FormField label="Tanggal Mulai Kerja">
             <input type="date" value={formStartDate} onChange={(e) => setFormStartDate(e.target.value)} />
           </FormField>
@@ -183,6 +272,8 @@ export default function KaryawanPage() {
               </select>
             </FormField>
           )}
+
+          {formError && <p className="text-sm text-[var(--color-accent)]">{formError}</p>}
 
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={() => setShowForm(false)} className="btn btn-secondary">Batal</button>

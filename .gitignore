@@ -42,3 +42,6 @@ next-env.d.ts
 # prisma
 prisma/*.db
 prisma/*.db-journal
+
+# hasil ekstraksi spreadsheet (data keuangan, bisa dibuat ulang via npm run db:extract)
+/prisma/import-data/

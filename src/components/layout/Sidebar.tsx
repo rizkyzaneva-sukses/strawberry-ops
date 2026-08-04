@@ -1,25 +1,24 @@
 'use client'
 
 import { useTheme } from '@/components/ThemeProvider'
+import { useGarden } from '@/components/GardenProvider'
 import { usePathname } from 'next/navigation'
+import { isActivePath, visibleGroups } from './menus'
 
 interface SidebarProps {
   user: { id: number; username: string; role: string; fullName: string }
   onLogout: () => void
 }
 
-const menus = [
-  { label: 'Dashboard', icon: '📊', href: '/' },
-  { label: 'Gaji', icon: '💰', href: '/gaji' },
-  { label: 'Pengeluaran', icon: '📤', href: '/pengeluaran' },
-  { label: 'Panen', icon: '🍓', href: '/pendapatan' },
-  { label: 'Revisi', icon: '📝', href: '/revisi' },
-  { label: 'Pengaturan', icon: '⚙️', href: '/pengaturan' },
-]
-
-export default function Sidebar({ user, onLogout }: SidebarProps) {
+export default function Sidebar({ onLogout }: SidebarProps) {
   const { theme, toggle } = useTheme()
+  const { activeGarden, gardens } = useGarden()
   const pathname = usePathname()
+
+  // Mode gabungan tetap menampilkan menu modal selama ada kebun berinvestor.
+  const showInvestorMenus = activeGarden
+    ? activeGarden.hasInvestor
+    : gardens.some((garden) => garden.hasInvestor)
 
   const handleNavigate = (href: string) => {
     window.location.href = href
@@ -27,36 +26,42 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
 
   return (
     <aside className="hidden lg:flex flex-col w-60 bg-[var(--color-surface)] border-r border-[var(--color-border)] h-screen fixed top-0 left-0 z-30">
-      {/* Logo */}
       <div className="p-4 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🍓</span>
           <div>
             <h1 className="font-bold text-base">StrawberryOps</h1>
-            <p className="text-xs text-[var(--color-text-muted)]">Manajemen Kebun Stroberi</p>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {activeGarden ? activeGarden.name : 'Semua Kebun'}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Menu */}
-      <nav className="flex-1 py-3 px-3">
-        {menus.map((menu, i) => (
-          <button
-            key={i}
-            onClick={() => handleNavigate(menu.href)}
-            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
-              pathname === menu.href || (menu.href !== '/' && pathname.startsWith(menu.href))
-                ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium'
-                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-light)]'
-            }`}
-          >
-            <span className="text-lg">{menu.icon}</span>
-            <span>{menu.label}</span>
-          </button>
+      <nav className="flex-1 py-3 px-3 overflow-y-auto">
+        {visibleGroups(showInvestorMenus).map((group) => (
+          <div key={group.title} className="mb-3">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              {group.title}
+            </p>
+            {group.items.map((menu) => (
+              <button
+                key={menu.href}
+                onClick={() => handleNavigate(menu.href)}
+                className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm mb-0.5 transition-colors ${
+                  isActivePath(pathname, menu.href)
+                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium'
+                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-light)]'
+                }`}
+              >
+                <span className="text-base">{menu.icon}</span>
+                <span>{menu.label}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
-      {/* User + Theme */}
       <div className="p-3 border-t border-[var(--color-border)] space-y-1">
         <button
           onClick={toggle}
