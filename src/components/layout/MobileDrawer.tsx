@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useTheme } from '@/components/ThemeProvider'
 import { useGarden } from '@/components/GardenProvider'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { isActivePath, visibleGroups } from './menus'
 
 interface MobileDrawerProps {
@@ -17,6 +17,7 @@ export default function MobileDrawer({ isOpen, onClose, user, onLogout }: Mobile
   const { theme, toggle } = useTheme()
   const { activeGarden, gardens } = useGarden()
   const pathname = usePathname()
+  const router = useRouter()
 
   const showInvestorMenus = activeGarden
     ? activeGarden.hasInvestor
@@ -34,7 +35,7 @@ export default function MobileDrawer({ isOpen, onClose, user, onLogout }: Mobile
   if (!isOpen) return null
 
   const handleNavigate = (href: string) => {
-    window.location.href = href
+    router.push(href)
   }
 
   return (

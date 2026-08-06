@@ -2,7 +2,7 @@
 
 import { useTheme } from '@/components/ThemeProvider'
 import { useGarden } from '@/components/GardenProvider'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { isActivePath, visibleGroups } from './menus'
 
 interface SidebarProps {
@@ -14,6 +14,7 @@ export default function Sidebar({ onLogout }: SidebarProps) {
   const { theme, toggle } = useTheme()
   const { activeGarden, gardens } = useGarden()
   const pathname = usePathname()
+  const router = useRouter()
 
   // Mode gabungan tetap menampilkan menu modal selama ada kebun berinvestor.
   const showInvestorMenus = activeGarden
@@ -21,7 +22,7 @@ export default function Sidebar({ onLogout }: SidebarProps) {
     : gardens.some((garden) => garden.hasInvestor)
 
   const handleNavigate = (href: string) => {
-    window.location.href = href
+    router.push(href)
   }
 
   return (
