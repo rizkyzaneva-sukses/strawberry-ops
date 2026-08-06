@@ -37,6 +37,7 @@ export const MENU_GROUPS: MenuGroup[] = [
   {
     title: 'Lainnya',
     items: [
+      { label: 'Panduan', icon: '📖', href: '/panduan' },
       { label: 'Karyawan', icon: '👥', href: '/karyawan' },
       { label: 'Revisi', icon: '📝', href: '/revisi' },
       { label: 'Pengaturan', icon: '⚙️', href: '/pengaturan' },
